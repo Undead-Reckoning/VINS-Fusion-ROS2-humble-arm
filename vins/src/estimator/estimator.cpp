@@ -1115,6 +1115,21 @@ void Estimator::optimization()
         }
     }
 
+    // Add barometer (altitude) residuals for frames that have measurements.
+    // `baro_z_by_frame` should be filled elsewhere (NaN if no measurement).
+    for (int i = 0; i < frame_count + 1; ++i)
+    {
+        if (i >= static_cast<int>(baro_z_by_frame.size()))
+            break;
+        double z = baro_z_by_frame[i];
+        if (Math::isfinite(z))
+        {
+            double sigma = 1.0; // default measurement stddev (meters); adjust as needed
+            BarometerFactor *baro = new BarometerFactor(z, sigma);
+            problem.AddResidualBlock(baro, NULL, para_Pose[i]);
+        }
+    }
+
     int f_m_cnt = 0;
     int feature_index = -1;
     for (auto &it_per_id : f_manager.feature)

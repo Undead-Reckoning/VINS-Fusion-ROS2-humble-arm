@@ -19,6 +19,7 @@
 #include <opencv2/core/eigen.hpp>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Geometry>
+#include "../../../global_fusion/ThirdParty/GeographicLib/include/Math.hpp"
 
 #include "parameters.h"
 #include "feature_manager.h"
@@ -34,6 +35,7 @@
 #include "../factor/projectionTwoFrameOneCamFactor.h"
 #include "../factor/projectionTwoFrameTwoCamFactor.h"
 #include "../factor/projectionOneFrameTwoCamFactor.h"
+#include "../factor/barometer_factor.h"
 #include "../featureTracker/feature_tracker.h"
 
 #define ROS_INFO RCUTILS_LOG_INFO
@@ -99,6 +101,7 @@ class Estimator
     std::mutex mProcess;
     std::mutex mBuf;
     std::mutex mPropagate;
+    std::vector<double> baro_z_by_frame;
     queue<pair<double, Eigen::Vector3d>> accBuf;
     queue<pair<double, Eigen::Vector3d>> gyrBuf;
     queue<pair<double, map<int, vector<pair<int, Eigen::Matrix<double, 7, 1> > > > > > featureBuf;
