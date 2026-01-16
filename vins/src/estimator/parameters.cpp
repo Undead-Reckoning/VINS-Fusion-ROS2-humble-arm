@@ -211,15 +211,42 @@ void readParameters(std::string config_file)
     fsSettings.release();
 }
 
-void loadLRFConfig(const std::string& path)
+void loadLRFConfig(std::string path)
 {
     cv::FileStorage fs(path, cv::FileStorage::READ);
 
+    if (!fs.isOpened())
+    {
+        throw std::runtime_error("Failed to open LRF config file: " + path);
+    }
+
     std::vector<double> r, t;
+
+    double sampling_rate_tmp;
+    double noise_tmp;
+    double res_tmp;
+    double ds_tmp;
+    double min_range_tmp;
+    double max_range_tmp;
 
     fs["lidar_to_camera_rotation"] >> r;
     fs["lidar_to_camera_translation"] >> t;
+    fs["sampling_rate"] >> sampling_rate_tmp;
+    fs["laser_noise_std"] >> noise_tmp;
+    fs["laser_resolution"] >> res_tmp;
+    fs["laser_downsample"] >> ds_tmp;
+    fs["laser_min_range"] >> min_range_tmp;
+    fs["laser_max_range"] >> max_range_tmp;
 
+    fs.release();
+
+    // Validate sizes
+    if (r.size() != 9 || t.size() != 3)
+    {
+        throw std::runtime_error("Invalid lidar_to_camera extrinsics size");
+    }
+
+    // Assign extrinsics
     R_cl <<
         r[0], r[1], r[2],
         r[3], r[4], r[5],
@@ -227,5 +254,13 @@ void loadLRFConfig(const std::string& path)
 
     t_cl << t[0], t[1], t[2];
 
-    fs.release();
+    // Assign scalars
+    sampling_rate   = sampling_rate_tmp;
+    laser_noise_std = noise_tmp;
+    laser_resolution = res_tmp;
+    laser_downsample = ds_tmp;
+    laser_min_range  = min_range_tmp;
+    laser_max_range  = max_range_tmp;
+
+    std::cout << "[LRF] Config loaded successfully\n";
 }

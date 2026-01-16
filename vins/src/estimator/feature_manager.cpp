@@ -69,9 +69,10 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
 
         // Lookup depth from depth image or laser projection
         double depth;
-        if (laser_projector.getDepth(f_per_fra.point(0), f_per_fra.point(1), depth))
+        double sigma;
+        if (laser_projector.getDepth(f_per_fra.point(0), f_per_fra.point(1), depth, sigma))
         {
-            f_per_fra.setLaserDepth(depth);
+            f_per_fra.setLaserDepth(depth, sigma);
         }
 
         assert(id_pts.second[0].first == 0);
@@ -315,30 +316,24 @@ void FeatureManager::triangulate(int frameCnt, Vector3d Ps[], Matrix3d Rs[], Vec
 {
     for (auto &it_per_id : feature)
     {
-        /*
-        // 1) Prefer laser depth if available in first frame
-        auto &f0 = it_per_id.feature_per_frame[0];
-
-        if (f0.has_laser_depth)
-        {
-            it_per_id.estimated_depth = f0.laser_depth;
-            it_per_id.solve_flag = 1;
-            continue;
-        }
-        */
-        
         // 1) Weight laser depth and triangulation values
         if (f0.has_laser_depth)
         {
-            double d_laser = f0.laser_depth;
-            double d_tri   = it_per_id.estimated_depth;
+            double z_l = f0.laser_depth;
+            double s_l = f0.depth_sigma;
 
-            it_per_id.estimated_depth = 0.001 * d_laser + 0.999 * d_tri;
+            double z_t = it_per_id.estimated_depth;
+            double s_t = 0.25 * z_t;   // approx triangulation uncertainty
+
+            double w_l = 1.0 / (s_l * s_l);
+            double w_t = 1.0 / (s_t * s_t);
+
+            double z_fused = (z_l * w_l + z_t * w_t) / (w_l + w_t);
+
+            it_per_id.estimated_depth = z_fused;
             it_per_id.solve_flag = 1;
-            continue;
         }
         
-
         // 2) Otherwise fallback to triangulation
         if (it_per_id.estimated_depth > 0)
             continue;
