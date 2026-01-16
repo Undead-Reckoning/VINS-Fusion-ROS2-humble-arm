@@ -73,6 +73,7 @@ extern int SHOW_TRACK;
 extern int FLOW_BACK;
 
 void readParameters(std::string config_file);
+void loadLRFConfig(std::string path);
 
 enum SIZE_PARAMETERIZATION
 {

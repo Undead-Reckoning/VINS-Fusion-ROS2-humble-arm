@@ -17,6 +17,9 @@ double GYR_N, GYR_W;
 std::vector<Eigen::Matrix3d> RIC;
 std::vector<Eigen::Vector3d> TIC;
 
+std::vector<Eigen::Matrix3d> R_cl;
+std::vector<Eigen::Vector3d> t_cl;
+
 Eigen::Vector3d G{0.0, 0.0, 9.8};
 
 int USE_GPU;
@@ -206,4 +209,23 @@ void readParameters(std::string config_file)
     }
 
     fsSettings.release();
+}
+
+void loadLRFConfig(const std::string& path)
+{
+    cv::FileStorage fs(path, cv::FileStorage::READ);
+
+    std::vector<double> r, t;
+
+    fs["lidar_to_camera_rotation"] >> r;
+    fs["lidar_to_camera_translation"] >> t;
+
+    R_cl <<
+        r[0], r[1], r[2],
+        r[3], r[4], r[5],
+        r[6], r[7], r[8];
+
+    t_cl << t[0], t[1], t[2];
+
+    fs.release();
 }

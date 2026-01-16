@@ -1,0 +1,19 @@
+%YAML:1.0
+
+#lrf parameters       The more accurate parameters you provide, the better performance
+laser_enable: true
+laser_topic: "/scan"
+laser_frame: "laser_link"
+
+lidar_to_camera_rotation: [ 0.9998, 0.0176, 0.0021,
+                           -0.0176, 0.9998, 0.0013,
+                           -0.0021,-0.0013, 0.9999 ]
+
+lidar_to_camera_translation: [ 0.045, 0.002, -0.031 ]
+
+sampling_rate: 100 # must be between 5 Hz and 1000 Hz
+laser_noise_std: 0.01     # m
+laser_resolution: 0.0001 # m
+laser_downsample: 1
+laser_min_range: 0.05 # m
+laser_max_range: 50.0 # m

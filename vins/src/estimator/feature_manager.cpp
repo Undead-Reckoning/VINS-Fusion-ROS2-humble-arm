@@ -8,6 +8,7 @@
  *******************************************************/
 
 #include "feature_manager.h"
+#include "LaserDepthProjector.h"
 
 int FeaturePerId::endFrame()
 {
@@ -62,6 +63,17 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
     for (auto &id_pts : image)
     {
         FeaturePerFrame f_per_fra(id_pts.second[0].second, td);
+        LaserDepthProjector laser_projector
+        loadLRFConfig("../../../config/lrf/lrf_config.yaml");
+        laser_projector.setExtrinsics(R_cl, t_cl);
+
+        // Lookup depth from depth image or laser projection
+        double depth;
+        if (laser_projector.getDepth(f_per_fra.point(0), f_per_fra.point(1), depth))
+        {
+            f_per_fra.setLaserDepth(depth);
+        }
+
         assert(id_pts.second[0].first == 0);
         if(id_pts.second.size() == 2)
         {
@@ -303,6 +315,31 @@ void FeatureManager::triangulate(int frameCnt, Vector3d Ps[], Matrix3d Rs[], Vec
 {
     for (auto &it_per_id : feature)
     {
+        /*
+        // 1) Prefer laser depth if available in first frame
+        auto &f0 = it_per_id.feature_per_frame[0];
+
+        if (f0.has_laser_depth)
+        {
+            it_per_id.estimated_depth = f0.laser_depth;
+            it_per_id.solve_flag = 1;
+            continue;
+        }
+        */
+        
+        // 1) Weight laser depth and triangulation values
+        if (f0.has_laser_depth)
+        {
+            double d_laser = f0.laser_depth;
+            double d_tri   = it_per_id.estimated_depth;
+
+            it_per_id.estimated_depth = 0.001 * d_laser + 0.999 * d_tri;
+            it_per_id.solve_flag = 1;
+            continue;
+        }
+        
+
+        // 2) Otherwise fallback to triangulation
         if (it_per_id.estimated_depth > 0)
             continue;
 

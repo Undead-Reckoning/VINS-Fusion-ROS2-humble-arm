@@ -46,6 +46,8 @@ class FeaturePerFrame
         velocity.y() = _point(6); 
         cur_td = td;
         is_stereo = false;
+        laser_depth = -1;
+        has_laser_depth = false;
     }
     void rightObservation(const Eigen::Matrix<double, 7, 1> &_point)
     {
@@ -57,12 +59,22 @@ class FeaturePerFrame
         velocityRight.x() = _point(5); 
         velocityRight.y() = _point(6); 
         is_stereo = true;
+        laser_depth = -1;
+        has_laser_depth = false;
     }
+    void setLaserDepth(double d)
+    {
+        laser_depth = d;
+        has_laser_depth = true;
+    }
+    
     double cur_td;
     Vector3d point, pointRight;
     Vector2d uv, uvRight;
     Vector2d velocity, velocityRight;
     bool is_stereo;
+    double laser_depth;     // <--- ADDED
+    bool has_laser_depth;   // <--- ADDED
 };
 
 class FeaturePerId
