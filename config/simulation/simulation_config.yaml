@@ -56,6 +56,9 @@ acc_w: 0.0002         # accelerometer bias random work noise standard deviation.
 gyr_w: 2.0e-5       # gyroscope bias random work noise standard deviation.     #4.0e-5
 g_norm: 9.805     # gravity magnitude
 
+#barometer parameters
+baro_n: 1         # barometer measurement noise standard deviation, in meters
+
 #unsynchronization parameters
 estimate_td: 0                      # online estimate time offset between camera and imu
 td: 0.0                             # initial value of time offset. unit: s. readed image clock + td = real image clock (IMU clock)

@@ -35,7 +35,7 @@
 #include "../factor/projectionTwoFrameOneCamFactor.h"
 #include "../factor/projectionTwoFrameTwoCamFactor.h"
 #include "../factor/projectionOneFrameTwoCamFactor.h"
-#include "../factor/barometer_factor.h"
+#include "../factor/barometer_factor.h" //Barometer Addition
 #include "../featureTracker/feature_tracker.h"
 
 #define ROS_INFO RCUTILS_LOG_INFO

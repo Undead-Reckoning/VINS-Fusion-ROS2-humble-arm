@@ -40,6 +40,9 @@ extern int USE_GPU_CERES;
 extern double ACC_N, ACC_W;
 extern double GYR_N, GYR_W;
 
+//barometer params
+extern double BARO_N;
+
 extern std::vector<Eigen::Matrix3d> RIC;
 extern std::vector<Eigen::Vector3d> TIC;
 extern Eigen::Vector3d G;

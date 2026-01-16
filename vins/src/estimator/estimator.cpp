@@ -1124,8 +1124,8 @@ void Estimator::optimization()
         double z = baro_z_by_frame[i];
         if (Math::isfinite(z))
         {
-            double sigma = 1.0; // default measurement stddev (meters); adjust as needed
-            BarometerFactor *baro = new BarometerFactor(z, sigma);
+            //double sigma = 1.0; // default measurement stddev (meters); adjust as needed
+            BarometerFactor *baro = new BarometerFactor(z, BARO_N);
             problem.AddResidualBlock(baro, NULL, para_Pose[i]);
         }
     }

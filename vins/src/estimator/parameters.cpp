@@ -14,6 +14,9 @@ double MIN_PARALLAX;
 double ACC_N, ACC_W;
 double GYR_N, GYR_W;
 
+//barometer std dev
+double BARO_N;
+
 std::vector<Eigen::Matrix3d> RIC;
 std::vector<Eigen::Vector3d> TIC;
 
@@ -110,6 +113,9 @@ void readParameters(std::string config_file)
         GYR_W = fsSettings["gyr_w"];
         G.z() = fsSettings["g_norm"];
     }
+
+    //Barometer read in
+    BARO_N = fsSettings["baro_n"];
 
     SOLVER_TIME = fsSettings["max_solver_time"];
     NUM_ITERATIONS = fsSettings["max_num_iterations"];
