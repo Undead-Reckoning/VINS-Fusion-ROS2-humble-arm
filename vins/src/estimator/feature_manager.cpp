@@ -60,12 +60,15 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
     last_average_parallax = 0;
     new_feature_num = 0;
     long_track_num = 0;
+
+    LaserDepthProjector laser_projector
+    laser_projector.loadLRFConfig("../../../config/lrf/lrf_config.yaml", "../../../config/euroc/cam0_pinhole.yaml");
+    laser_projector.width = 1;
+    laser_projector.height = 1;
+
     for (auto &id_pts : image)
     {
         FeaturePerFrame f_per_fra(id_pts.second[0].second, td);
-        LaserDepthProjector laser_projector
-        loadLRFConfig("../../../config/lrf/lrf_config.yaml");
-        laser_projector.setExtrinsics(R_cl, t_cl);
 
         // Lookup depth from depth image or laser projection
         double depth;
@@ -327,6 +330,8 @@ void FeatureManager::triangulate(int frameCnt, Vector3d Ps[], Matrix3d Rs[], Vec
 
             double w_l = 1.0 / (s_l * s_l);
             double w_t = 1.0 / (s_t * s_t);
+
+            cout << "laserDepth: " << z_l << ", laserDepthSigma: " << s_l << ", triangulationDepthSigma: " << s_t << endl;
 
             double z_fused = (z_l * w_l + z_t * w_t) / (w_l + w_t);
 

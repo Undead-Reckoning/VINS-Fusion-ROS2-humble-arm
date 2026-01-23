@@ -2,11 +2,17 @@
 
 #include <mutex>
 
-#include <opencv2/core.hpp>
-#include <Eigen/Dense>
-
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+
+#include <rclcpp/rclcpp.hpp>
+#include <vector>
+#include <eigen3/Eigen/Dense>
+#include "../utility/utility.h"
+#include <opencv2/opencv.hpp>
+#include <opencv2/core/eigen.hpp>
+#include <fstream>
+#include <map>
 
 class LaserDepthProjector
 {
@@ -27,12 +33,7 @@ public:
 
     bool ready = false;
 
-    void setExtrinsics(const Eigen::Matrix3d& R, const Eigen::Vector3d& t)
-    {
-        R_cl = R;
-        t_cl = t;
-    }
-
     void updatePointCloud(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
     bool getDepth(double u_norm, double v_norm, double &depth_out, double &sigma_out);
+    void loadLRFConfig(std::string path1, std::string path2);
 };
