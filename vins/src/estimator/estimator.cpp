@@ -9,6 +9,7 @@
 
 #include "estimator.h"
 #include "../utility/visualization.h"
+#include <limits>
 
 Estimator::Estimator(): f_manager{Rs}
 {
@@ -220,6 +221,13 @@ void Estimator::inputIMU(double t, const Vector3d &linearAcceleration, const Vec
     }
 }
 
+void Estimator::inputBaro(double t, double z)
+{
+    mBuf.lock();
+    baroBuf.push(std::make_pair(t, z));
+    mBuf.unlock();
+}
+
 void Estimator::inputFeature(double t, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &featureFrame)
 {
     ROS_ERROR("deprecated at VINS-Fusion");
@@ -337,6 +345,49 @@ void Estimator::processMeasurements()
                     processIMU(accVector[i].first, dt, accVector[i].second, gyrVector[i].second);
                 }
             }
+            // Associate barometer measurements with this frame (store altitude in meters)
+            mBuf.lock();
+            if (baro_z_by_frame.size() < static_cast<size_t>(frame_count + 1))
+                baro_z_by_frame.resize(frame_count + 1, std::numeric_limits<double>::quiet_NaN());
+
+            // drop baro entries older than or equal to prevTime
+            while (!baroBuf.empty() && baroBuf.front().first <= prevTime)
+                baroBuf.pop();
+
+            if (!baroBuf.empty() && baroBuf.front().first <= curTime)
+            {
+                baro_z_by_frame[frame_count] = baroBuf.front().second;
+                baroBuf.pop();
+            }
+            else
+            {
+                baro_z_by_frame[frame_count] = std::numeric_limits<double>::quiet_NaN();
+            }
+            mBuf.unlock();
+            
+            // Baro Addition
+            // Handle barometer measurements for this frame: assign altitude (meters) to baro_z_by_frame[frame_count]
+            mBuf.lock();
+            // ensure vector size
+            if (baro_z_by_frame.size() < static_cast<size_t>(frame_count + 1))
+                baro_z_by_frame.resize(frame_count + 1, std::numeric_limits<double>::quiet_NaN());
+
+            // discard old baro measurements (<= prevTime)
+            while (!baroBuf.empty() && baroBuf.front().first <= prevTime)
+                baroBuf.pop();
+
+            if (!baroBuf.empty() && baroBuf.front().first <= curTime)
+            {
+                double z = baroBuf.front().second;
+                baroBuf.pop();
+                baro_z_by_frame[frame_count] = z;
+            }
+            else
+            {
+                // no baro measurement for this frame
+                baro_z_by_frame[frame_count] = std::numeric_limits<double>::quiet_NaN();
+            }
+            mBuf.unlock();
             // cout << "4" << endl;
 
             mProcess.lock();

@@ -76,6 +76,8 @@ class Estimator
                                               vector<pair<double, Eigen::Vector3d>> &gyrVector);
     void getPoseInWorldFrame(Eigen::Matrix4d &T);
     void getPoseInWorldFrame(int index, Eigen::Matrix4d &T);
+    // Barometer input (altitude in meters)
+    void inputBaro(double t, double z);
     void predictPtsInNextFrame();
     void outliersRejection(set<int> &removeIndex);
     double reprojectionError(Matrix3d &Ri, Vector3d &Pi, Matrix3d &rici, Vector3d &tici,
@@ -102,6 +104,8 @@ class Estimator
     std::mutex mBuf;
     std::mutex mPropagate;
     std::vector<double> baro_z_by_frame;
+    // Barometer buffer: pair<time_seconds, altitude_meters>
+    std::queue<std::pair<double, double>> baroBuf;
     queue<pair<double, Eigen::Vector3d>> accBuf;
     queue<pair<double, Eigen::Vector3d>> gyrBuf;
     queue<pair<double, map<int, vector<pair<int, Eigen::Matrix<double, 7, 1> > > > > > featureBuf;
