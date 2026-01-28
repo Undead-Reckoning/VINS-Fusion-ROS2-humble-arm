@@ -20,7 +20,6 @@
 #include "estimator/estimator.h"
 #include "estimator/parameters.h"
 #include "utility/visualization.h"
-#include <std_msgs/msg/float32.hpp>
 
 Estimator estimator;
 
@@ -199,7 +198,7 @@ void feature_callback(const sensor_msgs::msg::PointCloud::SharedPtr feature_msg)
     return;
 }
 
-void baro_callback(const std_msgs::msg::Float32::SharedPtr baro_msg)
+void baro_callback(const sensor_msgs::msg::Baro::SharedPtr baro_msg)
 {
     double t = rclcpp::Clock().now().seconds();
     double z = baro_msg->data; // assume altitude in meters
@@ -293,7 +292,7 @@ int main(int argc, char **argv)
     
     // Baro subscription to BARO_TOPIC
 
-    auto sub_baro = n->create_subscription<std_msgs::msg::Float32>("/baro", rclcpp::QoS(rclcpp::KeepLast(200)), baro_callback);
+    auto sub_baro = n->create_subscription<sensor_msgs::msg::Baro>(BARO_TOPIC, rclcpp::QoS(rclcpp::KeepLast(200)), baro_callback);
 
 
     auto sub_restart = n->create_subscription<std_msgs::msg::Bool>("/vins_restart", rclcpp::QoS(rclcpp::KeepLast(100)), restart_callback);
