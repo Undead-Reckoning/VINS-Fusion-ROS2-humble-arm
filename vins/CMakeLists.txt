@@ -24,6 +24,14 @@ find_package(image_transport REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(Ceres REQUIRED)
 
+find_package(PCL REQUIRED)
+find_package(pcl_ros REQUIRED)
+find_package(pcl_conversions REQUIRED)
+
+include_directories(${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
+
 include_directories(${CERES_INCLUDE_DIRS})
 
 # include camera_models
@@ -39,6 +47,7 @@ include_directories(
 add_library(vins_lib
     src/estimator/parameters.cpp
     src/estimator/estimator.cpp
+    src/estimator/LaserDepthProjector.cpp
     src/estimator/feature_manager.cpp
     src/factor/pose_local_parameterization.cpp
     src/factor/projectionTwoFrameOneCamFactor.cpp
@@ -54,19 +63,29 @@ add_library(vins_lib
     src/initial/initial_ex_rotation.cpp
     src/featureTracker/feature_tracker.cpp)
 target_link_libraries(vins_lib  ${OpenCV_LIBS} ${CERES_LIBRARIES})
+target_link_libraries(vins_lib ${PCL_LIBRARIES})
 
-ament_target_dependencies(vins_lib rclcpp rcpputils std_msgs visualization_msgs geometry_msgs nav_msgs tf2 tf2_ros cv_bridge camera_models image_transport)
+target_include_directories(vins_lib
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/estimator>
+)
+
+ament_target_dependencies(vins_lib
+  rclcpp rcpputils std_msgs visualization_msgs geometry_msgs nav_msgs tf2 tf2_ros cv_bridge camera_models image_transport rclcpp sensor_msgs pcl_conversions pcl_ros
+)
 
 add_executable(vins_node src/rosNodeTest.cpp)
-ament_target_dependencies(vins_node rclcpp rcpputils std_msgs visualization_msgs geometry_msgs nav_msgs tf2 tf2_ros cv_bridge camera_models image_transport)
+ament_target_dependencies(vins_node rclcpp rcpputils std_msgs visualization_msgs geometry_msgs nav_msgs tf2 tf2_ros cv_bridge camera_models image_transport rclcpp sensor_msgs pcl_conversions pcl_ros)
 target_link_libraries(vins_node vins_lib) 
 
 add_executable(kitti_odom_test src/KITTIOdomTest.cpp)
-ament_target_dependencies(kitti_odom_test rclcpp rcpputils std_msgs visualization_msgs geometry_msgs nav_msgs tf2 tf2_ros cv_bridge camera_models image_transport)
+ament_target_dependencies(kitti_odom_test rclcpp rcpputils std_msgs visualization_msgs geometry_msgs nav_msgs tf2 tf2_ros cv_bridge camera_models image_transport rclcpp sensor_msgs pcl_conversions pcl_ros)
 target_link_libraries(kitti_odom_test vins_lib) 
 
 add_executable(kitti_gps_test src/KITTIGPSTest.cpp)
-ament_target_dependencies(kitti_gps_test rclcpp rcpputils std_msgs visualization_msgs geometry_msgs nav_msgs tf2 tf2_ros cv_bridge camera_models image_transport)
+ament_target_dependencies(kitti_gps_test rclcpp rcpputils std_msgs visualization_msgs geometry_msgs nav_msgs tf2 tf2_ros cv_bridge camera_models image_transport rclcpp sensor_msgs pcl_conversions pcl_ros)
 target_link_libraries(kitti_gps_test vins_lib) 
 
 # added from DEBUG

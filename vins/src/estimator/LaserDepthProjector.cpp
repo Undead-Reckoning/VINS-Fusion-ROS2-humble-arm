@@ -1,5 +1,8 @@
 #include "LaserDepthProjector.h"
 #include "../utility/visualization.h"
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 void LaserDepthProjector::updatePointCloud(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
 {
@@ -139,9 +142,9 @@ void LaserDepthProjector::loadLRFConfig(std::string path1, std::string path2)
     laser_min_range  = min_range_tmp;
     laser_max_range  = max_range_tmp;
 
-    cv::FileStorage fs(path2, cv::FileStorage::READ);
+    cv::FileStorage fs2(path2, cv::FileStorage::READ);
 
-    if (!fs.isOpened())
+    if (!fs2.isOpened())
     {
         throw std::runtime_error("Failed to open Camera config file: " + path2);
     }
@@ -153,15 +156,15 @@ void LaserDepthProjector::loadLRFConfig(std::string path1, std::string path2)
     double width_tmp;
     double height_tmp;
 
-    n = fs["projection_parameters"];
+    cv::FileNode n = fs2["projection_parameters"];
     n["fx"] >> fx_tmp;
     n["fy"] >> fy_tmp;
     n["cx"] >> cx_tmp;
     n["cy"] >> cy_tmp;
-    fs["image_width"] >> width_tmp;
-    fs["image_height"] >> height_tmp;
+    fs2["image_width"] >> width_tmp;
+    fs2["image_height"] >> height_tmp;
 
-    fs.release();
+    fs2.release();
 
     // Assign scalars
     fx   = fx_tmp;

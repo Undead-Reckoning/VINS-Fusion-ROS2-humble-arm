@@ -1,18 +1,28 @@
 #pragma once
 
-#include <mutex>
+#include <list>
+#include <algorithm>
+#include <vector>
+#include <numeric>
 
+#include <eigen3/Eigen/Dense>
+#include <rcpputils/asserts.hpp>
+#include "parameters.h"
+#include "../utility/tic_toc.h"
+#include <mutex>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
-#include <rclcpp/rclcpp.hpp>
+
 #include <vector>
-#include <eigen3/Eigen/Dense>
 #include "../utility/utility.h"
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/eigen.hpp>
 #include <fstream>
 #include <map>
+
+using namespace std;
+using namespace Eigen;
 
 class LaserDepthProjector
 {
