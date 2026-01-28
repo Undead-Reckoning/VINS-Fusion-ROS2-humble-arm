@@ -14,6 +14,13 @@ Estimator::Estimator(): f_manager{Rs}
 {
     ROS_INFO("init begins");
     initThreadFlag = false;
+
+    //Pitot tube initialization
+    pitot_buf.clear(); // Clears the pitot measurement buffer (container that stores pitot tube measuremtns and timestamps)
+    wind_velocity.setZero();
+    wind_initialized = false; // if hasn't been published to ROS topic yet
+    PITOT_NOISE = 0.5;
+    
     clearState();
 }
 
@@ -35,6 +42,10 @@ void Estimator::clearState()
         gyrBuf.pop();
     while(!featureBuf.empty())
         featureBuf.pop();
+
+    
+    // Clear pitot buffer
+    pitot_buf.clear();
 
     prevTime = -1;
     curTime = 0;
@@ -203,6 +214,23 @@ void Estimator::inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1)
     
 }
 
+void Estimator::inputPitot(double t, double vx_meas){
+    pitot_buf[t] = vx_meas; // stores pitot measurements from ROS callback in buffer with timestamp
+}
+
+void Estimator::setWindVelocity(const Eigen::Vector3d &wind)
+{
+    wind_velocity = wind;
+    wind_initialized = true;
+    ROS_INFO("Wind set to: [%.2f, %.2f, %.2f] m/s (CONSTANT)", // for debugging, so we can verify wind is being set correctly that wind was set correctly 
+             wind.x(), wind.y(), wind.z()); // The %.2f means: % "insert valie here", .2 -> 2 digits after decimal, f value of floating point number
+}
+// If we call Eigen:Vector3d wind(2.5,1.0,0.0);
+//estimator.setWindVelocity(wind); then we'll see [INFO] Wind set to: [2.50, 1.00, 0.00] m/s (CONSTANT) in terminal
+void Estimator::setWindVelocity(double wx, double wy, double wz)
+{
+    setWindVelocity(Eigen::Vector3d(wx, wy, wz));
+}
 void Estimator::inputIMU(double t, const Vector3d &linearAcceleration, const Vector3d &angularVelocity)
 {
     mBuf.lock();
@@ -1163,6 +1191,50 @@ void Estimator::optimization()
 
     ROS_DEBUG("visual measurement count: %d", f_m_cnt);
     //printf("prepare for ceres: %f \n", t_prepare.toc());
+
+    // Add Pitot Tube Factors
+    if (wind_initialized)  // Only add if wind has been set
+    {
+        int pitot_factor_count = 0;  // For debugging
+        
+        for (auto &pitot_item : pitot_buf)
+        {
+            double pitot_time = pitot_item.first;
+            double vx_meas = pitot_item.second;
+            
+            // Find which frame this measurement corresponds to
+            for (int i = 0; i < frame_count + 1; i++)
+            {
+                double dt = fabs(pitot_time - Headers[i]);
+                
+                if (dt < 0.05)  // Within 50ms of frame time
+                {
+                    // Create pitot factor with constant wind
+                    ceres::CostFunction *pitot_function = 
+                        new PitotFactor(vx_meas, wind_velocity, PITOT_NOISE);
+                    
+                    // Add to optimization problem with HuberLoss
+                    problem.AddResidualBlock(pitot_function, loss_function,
+                                            para_Pose[i],
+                                            para_SpeedBias[i]);
+                    
+                    pitot_factor_count++;
+                    break;  // Only add to one frame
+                }
+            }
+        }
+        
+        ROS_DEBUG("pitot measurement count: %d", pitot_factor_count);
+    }
+    else
+    {
+        // Warn if pitot data exists but wind not set
+        if (!pitot_buf.empty())
+        {
+            ROS_WARN("Pitot measurements available (%d) but wind not initialized!", 
+                     (int)pitot_buf.size());
+        }
+    }
 
     ceres::Solver::Options options;
 

@@ -72,6 +72,13 @@ extern double F_THRESHOLD;
 extern int SHOW_TRACK;
 extern int FLOW_BACK;
 
+// Pitot Tube 
+extern int USE_PITOT; // enable/disables flag as a boolean, turn pitot tube on/off in config
+extern std::string PITOT_TUBE_TOPIC; //ROS Topic
+extern double PITOT_NOISE; // Pitot measurement noise (m/s)
+extern Eigen::Vector3d INITIAL_WIND; // Wind from config file
+
+
 void readParameters(std::string config_file);
 
 enum SIZE_PARAMETERIZATION

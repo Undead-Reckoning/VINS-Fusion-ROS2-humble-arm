@@ -50,6 +50,12 @@ double F_THRESHOLD;
 int SHOW_TRACK;
 int FLOW_BACK;
 
+// Pitot Tube
+int USE_PITOT;
+std::string PITOT_TUBE_TOPIC;
+double PITOT_NOISE;
+Eigen::Vector3d INITIAL_WIND;
+
 
 template <typename T>
 T readParam(rclcpp::Node::SharedPtr n, std::string name)
@@ -78,10 +84,37 @@ void readParameters(std::string config_file)
     }
     fclose(fh);
 
-    cv::FileStorage fsSettings(config_file, cv::FileStorage::READ);
+    cv::FileStorage fsSettings(config_file, cv::FileStorage::READ); //This line opens config file, puts it in read mode and stores it in the fsseetings object
     if(!fsSettings.isOpened())
     {
         std::cerr << "ERROR: Wrong path to settings" << std::endl;
+    }
+
+    fsSettings["use_pitot"] >> USE_PITOT; //File storage settings, open CV object that reads and writes configuartions files
+    if (USE_PITOT)
+    {
+        fsSettings["pitot_tube_topic"] >> PITOT_TUBE_TOPIC;
+        fsSettings["pitot_noise"] >> PITOT_NOISE;
+        
+        // Load initial wind
+        cv::FileNode wind_node = fsSettings["initial_wind"];
+        if (!wind_node.empty())
+        {
+            INITIAL_WIND.x() = (double)wind_node["x"];
+            INITIAL_WIND.y() = (double)wind_node["y"];
+            INITIAL_WIND.z() = (double)wind_node["z"];
+        }
+        else
+        {
+            INITIAL_WIND.setZero();
+            ROS_WARN("No initial wind specified, assuming zero wind");
+        }
+        
+        ROS_INFO("Pitot tube configuration:");
+        ROS_INFO("  Topic: %s", PITOT_TUBE_TOPIC.c_str());
+        ROS_INFO("  Noise: %.3f m/s", PITOT_NOISE);
+        ROS_INFO("  Initial wind: [%.2f, %.2f, %.2f] m/s", 
+                 INITIAL_WIND.x(), INITIAL_WIND.y(), INITIAL_WIND.z());
     }
 
     fsSettings["image0_topic"] >> IMAGE0_TOPIC;

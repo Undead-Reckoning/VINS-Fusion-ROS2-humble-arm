@@ -20,6 +20,8 @@
 #include "estimator/estimator.h"
 #include "estimator/parameters.h"
 #include "utility/visualization.h"
+#include "std_msgs/msg/float64.hpp"
+#include "geometry_msgs/msg/vector3.hpp"
 
 Estimator estimator;
 
@@ -28,6 +30,25 @@ queue<sensor_msgs::msg::PointCloud::ConstPtr> feature_buf;
 queue<sensor_msgs::msg::Image::ConstPtr> img0_buf;
 queue<sensor_msgs::msg::Image::ConstPtr> img1_buf;
 std::mutex m_buf;
+
+// Pitot tube callback - receives vx measurements
+void pitot_callback(const std_msgs::msg::Float64::SharedPtr pitot_msg)
+{
+    if (!USE_PITOT)
+        return;
+    
+    double t = rclcpp::Clock().now().seconds();
+    double vx_meas = pitot_msg->data;
+    
+    estimator.inputPitot(t, vx_meas);
+}
+
+// Wind callback - allows setting/updating wind via ROS topic
+void wind_callback(const geometry_msgs::msg::Vector3::SharedPtr wind_msg)
+{
+    Eigen::Vector3d wind(wind_msg->x, wind_msg->y, wind_msg->z);
+    estimator.setWindVelocity(wind);
+}
 
 // header: 1403715278
 void img0_callback(const sensor_msgs::msg::Image::SharedPtr img_msg)
@@ -271,6 +292,12 @@ int main(int argc, char **argv)
     {
         sub_imu = n->create_subscription<sensor_msgs::msg::Imu>(IMU_TOPIC, rclcpp::QoS(rclcpp::KeepLast(2000)), imu_callback);
     }
+
+    //Pitot tube additon to set intital wind from config
+    if (USE_PITOT){
+        estimator.setWindVelocity(INITIAL_WIND);
+    }
+
     auto sub_feature = n->create_subscription<sensor_msgs::msg::PointCloud>("/feature_tracker/feature", rclcpp::QoS(rclcpp::KeepLast(2000)), feature_callback);
     auto sub_img0 = n->create_subscription<sensor_msgs::msg::Image>(IMAGE0_TOPIC, rclcpp::QoS(rclcpp::KeepLast(100)), img0_callback);
     
@@ -279,6 +306,26 @@ int main(int argc, char **argv)
     {
         sub_img1 = n->create_subscription<sensor_msgs::msg::Image>(IMAGE1_TOPIC, rclcpp::QoS(rclcpp::KeepLast(100)), img1_callback);
     }
+
+    // Subscribe to pitot tube
+    rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr pitot_sub;
+    if (USE_PITOT)
+    {
+        pitot_sub = n->create_subscription<std_msgs::msg::Float64>(
+            PITOT_TUBE_TOPIC,  // ← Uses the variable from parameters
+            100,
+            pitot_callback
+        );
+        ROS_INFO("Subscribed to pitot topic: %s", PITOT_TUBE_TOPIC.c_str());
+    }
+    
+    // Subscribe to wind updates (optional)
+    auto wind_sub = n->create_subscription<geometry_msgs::msg::Vector3>(
+        "/weather_station/wind",
+        10,
+        wind_callback
+    );
+
     
     auto sub_restart = n->create_subscription<std_msgs::msg::Bool>("/vins_restart", rclcpp::QoS(rclcpp::KeepLast(100)), restart_callback);
     auto sub_imu_switch = n->create_subscription<std_msgs::msg::Bool>("/vins_imu_switch", rclcpp::QoS(rclcpp::KeepLast(100)), imu_switch_callback);

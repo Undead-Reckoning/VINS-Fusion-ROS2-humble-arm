@@ -35,6 +35,7 @@
 #include "../factor/projectionTwoFrameTwoCamFactor.h"
 #include "../factor/projectionOneFrameTwoCamFactor.h"
 #include "../featureTracker/feature_tracker.h"
+#include "../factor/pitot_tube_factor.h"
 
 #define ROS_INFO RCUTILS_LOG_INFO
 #define ROS_WARN RCUTILS_LOG_WARN
@@ -58,6 +59,10 @@ class Estimator
     void processMeasurements();
     void changeSensorType(int use_imu, int use_stereo);
 
+    // Pitot tube additions
+    void inputPitot(double t, double vx_meas);
+    void setWindVelocity(const Eigen::Vector3d &wind);
+    void setWindVelocity(double wx, double wy, double wz);
     // internal
     void clearState();
     bool initialStructure();
@@ -102,6 +107,10 @@ class Estimator
     queue<pair<double, Eigen::Vector3d>> accBuf;
     queue<pair<double, Eigen::Vector3d>> gyrBuf;
     queue<pair<double, map<int, vector<pair<int, Eigen::Matrix<double, 7, 1> > > > > > featureBuf;
+
+    // Pitot tube buffer 
+    std::map<double, double> pitot_buf;
+
     double prevTime, curTime;
     bool openExEstimation;
 
@@ -178,4 +187,9 @@ class Estimator
 
     bool initFirstPoseFlag;
     bool initThreadFlag;
+
+    // Pitot tube variables
+    Eigen::Vector3d wind_velocity; // Constant wind in world frame
+    bool wind_initialized; // Has wind been set?
+    double PITOT_NOISE; // Pitot measurement noise (m/s)
 };
