@@ -30,6 +30,7 @@ queue<sensor_msgs::msg::Image::ConstPtr> img1_buf;
 std::mutex m_buf;
 
 // Baro Addition
+queue<sensor_msgs::msg::Baro::ConstPtr> baro_buf
 
 // header: 1403715278
 void img0_callback(const sensor_msgs::msg::Image::SharedPtr img_msg)
