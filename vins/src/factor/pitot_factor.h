@@ -36,8 +36,8 @@ class PitotFactor : public ceres::SizedCostFunction<1, 7, 9> // <1 residual, 7 f
 {
   public:
     PitotFactor() = delete;
-    PitotFactor(double vx_meas_, double sigma) // 
-      : vx_meas(vx_meas_)
+    PitotFactor(double vx_meas, double sigma) // 
+      : vx_meas(vx_meas), wind_velocity(0,0,0)
     {
       if (sigma <= 0)
         sigma = 1.0;
@@ -66,16 +66,40 @@ class PitotFactor : public ceres::SizedCostFunction<1, 7, 9> // <1 residual, 7 f
         residuals[0] = (vx_meas - vx_pred) * sqrt_info;
 
         
-        // NEED: Jacobian wrt to pose, velocity, wind
-        if (jacobians && jacobians[0])
-        {
+        // NEED: Jacobian wrt to pose
+        if (jacobians){
+
+          if (jacobians[0])  
+          {
+            // Jacobian wrt to pose
+            
+            //Jacobian is not dependent on position, so first three columns are zero
             Eigen::Map<Eigen::Matrix<double, 1, 7, Eigen::RowMajor>> jacobian_pose(jacobians[0]);
             jacobian_pose.setZero();
-            jacobian_pose(0, 2) = sqrt_info;
-        }
+            // Position derivatives are zero
+            jacobian_pose.block<1, 3>(0, 0).setZero();
 
-        // Jacobian wrt pose
-        // Jacobian wrt to velocity from state
+            Eigen::Matrix3d R_b_w = q_wb.inverse().toRotationMatrix();
+            Eigen::Matrix3d skew_V_air_world = Utility::skewSymmetric(v_air_world);
+            Eigen::Vector3d d_Vx_d_rotation = -(R_b_w * skew_V_air_world).row(0).transpose();
+              
+            jacobian_pose.block<1, 3>(0, 3) = -sqrt_info * d_Vx_d_rotation.transpose() * 0.5;
+            jacobian_pose(0, 6) = 0.0;
+          }
+          
+          // Jacobian wrt to velocity
+          if (jacobians[1])  
+          {
+            Eigen::Map<Eigen::Matrix<double, 1, 9, Eigen::RowMajor>> jacobian_speedbias(jacobians[1]);
+            jacobian_speedbias.setZero();
+            Eigen::Matrix3d R_b_w = q_wb.inverse().toRotationMatrix();
+            jacobian_speedbias.block<1, 3>(0, 0) = -sqrt_info * R_b_w.row(0);
+
+            // Bias doesn't have affect on the airspeed 
+            jacobian_speedbias.block<1, 3>(0, 3).setZero();
+            jacobian_speedbias.block<1, 3>(0, 6).setZero();
+          }
+      }
 
         return true;
     }
