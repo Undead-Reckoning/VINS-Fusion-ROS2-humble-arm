@@ -20,6 +20,7 @@
 #include "estimator/estimator.h"
 #include "estimator/parameters.h"
 #include "utility/visualization.h"
+#include "std_msgs/msg/float32.hpp"
 
 Estimator estimator;
 
@@ -241,7 +242,18 @@ int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
 	auto n = rclcpp::Node::make_shared("vins_estimator");
+    auto laser_projector = std::make_shared<LaserDepthProjector>();
     // ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info);
+
+    auto sub_lrf = n->create_subscription<std_msgs::msg::Float32>(
+        "/lrf",
+        rclcpp::QoS(rclcpp::KeepLast(200)),
+        std::bind(&LaserDepthProjector::updateRange,
+                laser_projector.get(),
+                std::placeholders::_1)
+    );
+    // pass pointer into estimator / feature manager
+    estimator.setLaserProjector(laser_projector.get());
 
     if(argc != 2)
     {
@@ -279,7 +291,6 @@ int main(int argc, char **argv)
     {
         sub_img1 = n->create_subscription<sensor_msgs::msg::Image>(IMAGE1_TOPIC, rclcpp::QoS(rclcpp::KeepLast(100)), img1_callback);
     }
-    
     auto sub_restart = n->create_subscription<std_msgs::msg::Bool>("/vins_restart", rclcpp::QoS(rclcpp::KeepLast(100)), restart_callback);
     auto sub_imu_switch = n->create_subscription<std_msgs::msg::Bool>("/vins_imu_switch", rclcpp::QoS(rclcpp::KeepLast(100)), imu_switch_callback);
     auto sub_cam_switch = n->create_subscription<std_msgs::msg::Bool>("/vins_cam_switch", rclcpp::QoS(rclcpp::KeepLast(100)), cam_switch_callback);

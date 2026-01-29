@@ -4,63 +4,36 @@
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
 
-void LaserDepthProjector::updatePointCloud(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
+void LaserDepthProjector::updateRange(const std_msgs::msg::Float32::SharedPtr msg)
 {
+    double r = msg->data;
+
+    if (width <= 0 || height <= 0) return;
+    if (r < laser_min_range || r > laser_max_range) return;
+
     depth_map = cv::Mat(height, width, CV_32FC1, cv::Scalar(0));
     depth_sigma_map = cv::Mat(height, width, CV_32FC1, cv::Scalar(0));
 
-    pcl::PointCloud<pcl::PointXYZ> cloud;
-    pcl::fromROSMsg(*msg, cloud);
+    Eigen::Vector3d p_l(r, 0.0, 0.0);
+    Eigen::Vector3d p_c = R_cl * p_l + t_cl;
 
-    for (auto &pt : cloud.points)
-    {
-        // Laser frame
-        Vector3d p_l(pt.x, pt.y, pt.z);
+    if (p_c.z() <= 0) return;
 
-        // Transform to camera frame
-        Vector3d p_c = R_cl * p_l + t_cl;
+    int u = static_cast<int>(fx * p_c.x() / p_c.z() + cx);
+    int v = static_cast<int>(fy * p_c.y() / p_c.z() + cy);
 
-        if (p_c.z() < laser_min_range || p_c.z() > laser_max_range)
-            continue;
+    if (u < 0 || u >= width || v < 0 || v >= height) return;
 
-        // Project to pixel
-        int u = fx * p_c.x() / p_c.z() + cx;
-        int v = fy * p_c.y() / p_c.z() + cy;
+    double xn = (u - cx) / fx;
+    double yn = (v - cy) / fy;
+    double tan_theta2 = xn * xn + yn * yn;
 
-        if (u < 0 || u >= width || v < 0 || v >= height)
-            continue;
+    double k = 3.0;
+    double sigma = laser_noise_std * (1.0 + k * tan_theta2);
+    sigma = std::min(sigma, 5.0 * laser_noise_std);
 
-        float &d = depth_map.at<float>(v, u);
-        float &s = depth_sigma_map.at<float>(v, u);
-
-        double depth = p_c.z();
-
-        // Normalized image coordinates
-        double xn = (u - cx) / fx;
-        double yn = (v - cy) / fy;
-        double tan_theta2 = xn * xn + yn * yn;
-
-        // Tunable coefficient
-        double k = 3.0;
-
-        // Edge-aware sigma
-        double sigma = laser_noise_std * (1.0 + k * tan_theta2);
-        sigma = std::min(sigma, 5.0 * laser_noise_std);
-
-        if (d == 0 || depth < d)
-        {
-            d = depth;
-            s = sigma;
-        }
-        else
-        {
-            float alpha = 0.6f;
-            d = alpha * d + (1 - alpha) * depth;
-            s = alpha * s + (1 - alpha) * sigma;
-        }
-    }
-
-    cv::medianBlur(depth_map, depth_map, 3);
+    depth_map.at<float>(v, u) = static_cast<float>(p_c.z());
+    depth_sigma_map.at<float>(v, u) = static_cast<float>(sigma);
 
     ready = true;
 }

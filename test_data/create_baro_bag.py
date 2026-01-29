@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Script to copy a ROS2 bag and add spoofed barometer data.
+Script to copy a ROS2 bag and add spoofed LRF data.
 This is a replacement for the buggy MATLAB ros2bagwriter.
 """
 
@@ -20,14 +20,14 @@ except ImportError as e:
     print(f"Error details: {e}")
     sys.exit(1)
 
-def copy_bag_with_baro(input_bag_path, output_bag_path, baro_frequency=20.0, duration_seconds=None, skip_topics=None):
+def copy_bag_with_lrf(input_bag_path, output_bag_path, lrf_frequency=20.0, duration_seconds=None, skip_topics=None):
     """
-    Copy a ROS2 bag and add barometer data.
+    Copy a ROS2 bag and add LRF data.
     
     Args:
         input_bag_path: Path to input bag directory
         output_bag_path: Path to output bag directory
-        baro_frequency: Barometer sampling frequency in Hz
+        lrf_frequency: LRF sampling frequency in Hz
         duration_seconds: Maximum duration to copy in seconds (None = copy entire bag)
         skip_topics: List of topics to skip (default: None - don't skip any topics)
     """
@@ -75,14 +75,14 @@ def copy_bag_with_baro(input_bag_path, output_bag_path, baro_frequency=20.0, dur
         else:
             print(f"  - {topic_metadata.name} (SKIPPED)")
     
-    # Add barometer topic
-    baro_topic = TopicMetadata(
-        name='/baro',
+    # Add LRF topic
+    lrf_topic = TopicMetadata(
+        name='/lrf',
         type='std_msgs/msg/Float32',
         serialization_format='cdr'
     )
-    writer.create_topic(baro_topic)
-    print(f"  - /baro (std_msgs/msg/Float32) [NEW]")
+    writer.create_topic(lrf_topic)
+    print(f"  - /lrf (std_msgs/msg/Float32) [NEW]")
     
     # Copy all messages
     print("\nCopying messages...")
@@ -121,19 +121,19 @@ def copy_bag_with_baro(input_bag_path, output_bag_path, baro_frequency=20.0, dur
     for topic, count in sorted(topic_counts.items()):
         print(f"  {topic}: {count}")
     
-    # Add barometer messages
-    print(f"\nAdding barometer data at {baro_frequency} Hz...")
+    # Add LRF messages
+    print(f"\nAdding LRF data at {lrf_frequency} Hz...")
     duration_s = (end_time - start_time) / 1e9
-    num_baro_samples = int(duration_s * baro_frequency)
+    num_lrf_samples = int(duration_s * lrf_frequency)
     
-    baro_msg = Float32()
-    baro_msg.data = 0.0
+    lrf_msg = Float32()
+    lrf_msg.data = 5.0
     
-    for i in range(num_baro_samples):
-        timestamp = start_time + int((i / baro_frequency) * 1e9)
-        writer.write('/baro', serialize_message(baro_msg), timestamp)
+    for i in range(num_lrf_samples):
+        timestamp = start_time + int((i / lrf_frequency) * 1e9)
+        writer.write('/lrf', serialize_message(lrf_msg), timestamp)
     
-    print(f"Added {num_baro_samples} barometer messages (constant height = 0.0 m)")
+    print(f"Added {num_lrf_samples} LRF messages (constant height = 0.0 m)")
     
     # Cleanup
     print("\nFinalizing bag...")
@@ -142,7 +142,7 @@ def copy_bag_with_baro(input_bag_path, output_bag_path, baro_frequency=20.0, dur
     
     print(f"\n✓ Successfully created: {output_bag_path}")
     print(f"  Duration: {duration_s:.2f} seconds")
-    print(f"  Total topics: {len(topic_counts) + 1} (including /baro)")
+    print(f"  Total topics: {len(topic_counts) + 1} (including /lrf)")
 
 
 def validate_bag(bag_path):
@@ -196,10 +196,10 @@ def validate_bag(bag_path):
 
 if __name__ == '__main__':
     # Configuration
-    INPUT_BAG = "test_data/V1_01_easy"
-    OUTPUT_BAG = "test_data/Test_Baro_Zeros_10s"
-    BARO_FREQUENCY = 20.0  # Hz
-    DURATION_SECONDS = 10  # None = entire bag, or set to e.g. 30.0 for 30 seconds
+    INPUT_BAG = "V1_01_easy"
+    OUTPUT_BAG = "Test_LRF"
+    LRF_FREQUENCY = 10.0  # Hz
+    DURATION_SECONDS = None  # None = entire bag, or set to e.g. 30.0 for 30 seconds
     SKIP_TOPICS = []  # Empty list = don't skip any topics. Example: ['/fcu/motor_speed', '/some/topic']
     
     # You can also pass arguments from command line
@@ -208,16 +208,16 @@ if __name__ == '__main__':
     if len(sys.argv) > 2:
         OUTPUT_BAG = sys.argv[2]
     if len(sys.argv) > 3:
-        BARO_FREQUENCY = float(sys.argv[3])
+        LRF_FREQUENCY = float(sys.argv[3])
     if len(sys.argv) > 4:
         DURATION_SECONDS = float(sys.argv[4])
     
     print("="*60)
-    print("ROS2 Bag Copy with Barometer Data")
+    print("ROS2 Bag Copy with LRF Data")
     print("="*60)
     print(f"Input:  {INPUT_BAG}")
     print(f"Output: {OUTPUT_BAG}")
-    print(f"Baro frequency: {BARO_FREQUENCY} Hz")
+    print(f"lrf frequency: {LRF_FREQUENCY} Hz")
     if DURATION_SECONDS is not None:
         print(f"Duration limit: {DURATION_SECONDS} seconds")
     else:
@@ -229,11 +229,11 @@ if __name__ == '__main__':
     print("="*60)
     
     try:
-        # Copy bag and add barometer data
-        copy_bag_with_baro(
+        # Copy bag and add LRF data
+        copy_bag_with_lrf(
             input_bag_path=INPUT_BAG,
             output_bag_path=OUTPUT_BAG,
-            baro_frequency=BARO_FREQUENCY,
+            lrf_frequency=LRF_FREQUENCY,
             duration_seconds=DURATION_SECONDS,
             skip_topics=SKIP_TOPICS
         )

@@ -16,9 +16,9 @@ int FeaturePerId::endFrame()
 {
     return start_frame + feature_per_frame.size() - 1;
 }
-
-FeatureManager::FeatureManager(Matrix3d _Rs[])
-    : Rs(_Rs)
+FeatureManager::FeatureManager(Eigen::Matrix3d* _Rs,
+                               LaserDepthProjector* lp)
+    : Rs(_Rs), laser_projector(lp)
 {
     for (int i = 0; i < NUM_OF_CAM; i++)
         ric[i].setIdentity();
@@ -63,19 +63,18 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
     new_feature_num = 0;
     long_track_num = 0;
 
-    LaserDepthProjector laser_projector;
-    laser_projector.loadLRFConfig("../../../config/lrf/lrf_config.yaml", "../../../config/euroc/cam0_pinhole.yaml");
-    laser_projector.width = 1;
-    laser_projector.height = 1;
+    LaserDepthProjector* laser_projector;
+    laser_projector->loadLRFConfig("../../../config/lrf/lrf_config.yaml", "../../../config/euroc/cam0_pinhole.yaml");
+    laser_projector->width = COL;
+    laser_projector->height = ROW;
 
     for (auto &id_pts : image)
     {
         FeaturePerFrame f_per_fra(id_pts.second[0].second, td);
 
         // Lookup depth from depth image or laser projection
-        double depth;
-        double sigma;
-        if (laser_projector.getDepth(f_per_fra.point(0), f_per_fra.point(1), depth, sigma))
+        double depth, sigma;
+        if (laser_projector && laser_projector->getDepth(f_per_fra.point(0), f_per_fra.point(1), depth, sigma))
         {
             f_per_fra.setLaserDepth(depth, sigma);
         }

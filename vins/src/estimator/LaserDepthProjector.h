@@ -18,6 +18,7 @@
 #include "../utility/utility.h"
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/eigen.hpp>
+#include "std_msgs/msg/float32.hpp"
 #include <fstream>
 #include <map>
 
@@ -43,7 +44,7 @@ public:
 
     bool ready = false;
 
-    void updatePointCloud(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
+    void updateRange(const std_msgs::msg::Float32::SharedPtr msg);
     bool getDepth(double u_norm, double v_norm, double &depth_out, double &sigma_out);
     void loadLRFConfig(std::string path1, std::string path2);
 };

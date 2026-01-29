@@ -203,6 +203,12 @@ void Estimator::inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1)
     
 }
 
+void Estimator::setLaserProjector(LaserDepthProjector* lp)
+{
+    f_manager.setLaserProjector(lp);
+}
+
+
 void Estimator::inputIMU(double t, const Vector3d &linearAcceleration, const Vector3d &angularVelocity)
 {
     mBuf.lock();

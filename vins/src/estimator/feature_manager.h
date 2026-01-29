@@ -24,6 +24,7 @@ using namespace Eigen;
 
 #include "parameters.h"
 #include "../utility/tic_toc.h"
+#include "LaserDepthProjector.h"
 
 
 #define ROS_INFO RCUTILS_LOG_INFO
@@ -100,7 +101,7 @@ class FeaturePerId
 class FeatureManager
 {
   public:
-    FeatureManager(Matrix3d _Rs[]);
+    FeatureManager(Eigen::Matrix3d* _Rs, LaserDepthProjector* lp = nullptr);
 
     void setRic(Matrix3d _ric[]);
     void clearState();
@@ -128,10 +129,17 @@ class FeatureManager
     int new_feature_num;
     int long_track_num;
 
+    void setLaserProjector(LaserDepthProjector* lp)
+    {
+        laser_projector = lp;
+    }
+
   private:
     double compensatedParallax2(const FeaturePerId &it_per_id, int frame_count);
     const Matrix3d *Rs;
     Matrix3d ric[2];
+
+    LaserDepthProjector* laser_projector = nullptr;
 };
 
 #endif
