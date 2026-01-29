@@ -25,7 +25,7 @@ class MagnetometerFactor : public ceres::SizedCostFunction<3, 7>
      * @param z_meas
      */
     MagnetometerFactor(double x_meas_, double y_meas_, double z_meas_, double sigma)
-      : x_meas(x_meas_)
+      : x_meas(x_meas_), y_meas(y_meas_), z_meas(z_meas_)
     {
       if (sigma <= 0)
         sigma = 1.0;
@@ -35,7 +35,7 @@ class MagnetometerFactor : public ceres::SizedCostFunction<3, 7>
     virtual bool Evaluate(double const *const *parameters, double *residuals, double **jacobians) const
     {
         // pose parameterization in this codebase: [px, py, pz, qx, qy, qz, qw]
-        const double qz = paramters[0][5];
+        const double qz = parameters[0][5];
 
         Eigen::Quaterniond q(parameters[0][6], parameters[0][3], parameters[0][4], parameters[0][5]);
         Eigen::Matrix3d Rwb = q.toRotationMatrix();
@@ -43,21 +43,21 @@ class MagnetometerFactor : public ceres::SizedCostFunction<3, 7>
 
         //residual
         mag_inert_norm = Eigen::Vector3d(0,1,0).normalized(); //Magnetic North, assumed temp
-        m_meas = Eigen::Vector3d meas(x_meas,y_meas,z_meas);
+        m_meas = Eigen::Vector3d(x_meas, y_meas, z_meas);
         //m_meas_norm = Eigen::Vector3d(meas./(x_meas**2 + y_meas**2 + z_meas**2));
         m_meas_norm = m_meas.normalized();
 
         //transpose
-            
-        residuals = (m_meas_norm - Rwb.transpose().*mag_inert_norm)*sqrt_info;
-
+        Eigen::Map<Eigen::Vector3d> res(residuals);
+        residuals = (m_meas_norm - Rwb.transpose() * mag_inert_norm) * sqrt_info;
              // (jacobians && jacobians[0])
        if (jacobians && jacobians[0]){
             Eigen::Map<Eigen::Matrix<double, 3, 7, Eigen::RowMajor>> jacobian_pose_mag(jacobians[0]);
             jacobian_pose_mag.setZero();
             //Eigen::Matrix3d jacobian_rotation = -Rwb.transpose() * skew(mag_inert_norm);
-            Eigen::Matrix3d jacobian_mag = -Rwb.transpose() * mag_inert_norm
-            jacobian_pos_mag.block<3,3>(0,3) = jacobian_mag;
+            Eigen::Matrix3d jacobian_mag = -Rwb.transpose() * mag_inert_norm;
+            jacobian_pose_mag.block<3,3>(0,3) = jacobian_mag; //maybe remove prev negative, add neg skew() around here
+       }
 
 
         return true;

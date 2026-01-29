@@ -76,6 +76,7 @@ void Estimator::clearState()
     solver_flag = INITIAL;
     initial_timestamp = 0;
     all_image_frame.clear();
+    gps_avail= false;
 
     if (tmp_pre_integration != nullptr)
     {
@@ -220,6 +221,13 @@ void Estimator::inputIMU(double t, const Vector3d &linearAcceleration, const Vec
     }
 }
 
+void Estimator::inputMag(double t, const Vector3d &magneticField)
+{
+    mBuf.lock();
+    magBuf.push(make_pair(t, magneticField));
+    mBuf.unlock();
+}
+
 void Estimator::inputFeature(double t, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &featureFrame)
 {
     ROS_ERROR("deprecated at VINS-Fusion");
@@ -337,6 +345,32 @@ void Estimator::processMeasurements()
                     processIMU(accVector[i].first, dt, accVector[i].second, gyrVector[i].second);
                 }
             }
+
+            //mag addition
+            mBuf.lock();
+
+            if (mag_by_frame.size() < static_cast<size_t>(frame_count + 1))
+                mag_by_frame.resize(frame_count + 1,
+                    Eigen::Vector3d::Constant(std::numeric_limits<double>::quiet_NaN()));
+
+            // Drop old measurements
+            while (!magBuf.empty() && magBuf.front().first <= prevTime)
+                magBuf.pop();
+
+            if (!magBuf.empty() && magBuf.front().first <= curTime)
+            {
+                mag_by_frame[frame_count] = magBuf.front().second;
+                magBuf.pop();
+            }
+            else
+            {
+                mag_by_frame[frame_count].setConstant(
+                    std::numeric_limits<double>::quiet_NaN());
+            }
+
+            mBuf.unlock();
+            //mag addition end
+
             // cout << "4" << endl;
 
             mProcess.lock();
@@ -499,7 +533,8 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
     }
 
 
-    if (solver_flag == INITIAL)
+    if (solver_flag == INITIAL) //make condition to also check for GPS to rerun this statement and initialStructure()
+    //if (solver_flag == INITIAL || gps_avail == true)
     {
         // monocular + IMU initilization
         if (!STEREO && USE_IMU)
@@ -814,9 +849,15 @@ bool Estimator::visualInitialAlign()
         }
     }
 
-    Matrix3d R0 = Utility::g2R(g);
-    double yaw = Utility::R2ypr(R0 * Rs[0]).x();
-    R0 = Utility::ypr2R(Eigen::Vector3d{-yaw, 0, 0}) * R0;
+    Matrix3d R0 = Utility::g2R(g); //initial rotation matrix w/ gravity direction down
+    double yaw = Utility::R2ypr(R0 * Rs[0]).x(); //Yaw between WF and Initial body frame
+    
+    //declaring GPS north alignment
+    //R0 = Utility::ypr2R(Eigen::Vector3d{-yaw, 0, 0}) * R0; //Yaw is zeroed with W yaw align to B yaw
+    R0 = Utility::ypr2R(Eigen::Vector3d{gps_yaw, 0, 0}) * R0;  // GPS yaw instead
+    //R0 rotates the world frame wrt yaw to make current ac heading new reference
+    //Ex. if A/C starts at Xdeg from GPS north, the R0 will define the body frame as zero yaw, Xdeg rotation from world frame. Any deviation from this heading yaw will result in a R0 yaw of non-zero.
+
     g = R0 * g;
     //Matrix3d rot_diff = R0 * Rs[0].transpose();
     Matrix3d rot_diff = R0;
@@ -1114,6 +1155,20 @@ void Estimator::optimization()
             problem.AddResidualBlock(imu_factor, NULL, para_Pose[i], para_SpeedBias[i], para_Pose[j], para_SpeedBias[j]);
         }
     }
+
+    //magnetometer addition
+    for (int i=0; i < frame_count; i++)
+    {
+        if (i >= static_cast<int>(mag_by_frame.size()))
+            break;
+        double magneticField = mag_by_frame[i];
+        if (MATH::isfinite(magneticField)){
+            MagnetometerFactor* mag_factor = new MagnetometerFactor(magneticField, mag_ref);
+            problem.AddResidualBlock(mag_factor, NULL, para_Pose[i]);
+        }
+    }
+
+    //mag addition end
 
     int f_m_cnt = 0;
     int feature_index = -1;

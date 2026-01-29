@@ -237,6 +237,19 @@ void cam_switch_callback(const std_msgs::msg::Bool::SharedPtr switch_msg)
     return;
 }
 
+void mag_callback(const sensor_msgs::msg::Mag::SharedPtr mag_msg)
+{
+    double t = mag_msg->header.stamp.sec + mag_msg->header.stamp.nanosec * (1e-9);
+    double mx = mag_msg->magnetic_field.x;
+    double my = mag_msg->magnetic_field.y;
+    double mz = mag_msg->magnetic_field.z;
+
+    Vector3d mag(mx, my, mz);
+    mag.normalize();
+    estimator.inputMag(t, mag);
+    return;
+}
+
 int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
@@ -283,6 +296,14 @@ int main(int argc, char **argv)
     auto sub_restart = n->create_subscription<std_msgs::msg::Bool>("/vins_restart", rclcpp::QoS(rclcpp::KeepLast(100)), restart_callback);
     auto sub_imu_switch = n->create_subscription<std_msgs::msg::Bool>("/vins_imu_switch", rclcpp::QoS(rclcpp::KeepLast(100)), imu_switch_callback);
     auto sub_cam_switch = n->create_subscription<std_msgs::msg::Bool>("/vins_cam_switch", rclcpp::QoS(rclcpp::KeepLast(100)), cam_switch_callback);
+
+    //added
+    //rclcpp::Subscription<sensor_msgs::msg::Mag>::SharedPtr sub_mag = NULL;
+    //if(USE_MAG)
+    //{
+    //    sub_mag = n->create_subscription<sensor_msgs::msg::Mag>(MAG_TOPIC, rclcpp::QoS(rclcpp::KeepLast(2000)), mag_callback);
+    //}
+    auto sub_mag = n->create_subscription<sensor_msgs::msg::Mag>(MAG_TOPIC, rclcpp::QoS(rclcpp::KeepLast(2000)), mag_callback);
 
     std::thread sync_thread{sync_process};
     rclcpp::spin(n);
