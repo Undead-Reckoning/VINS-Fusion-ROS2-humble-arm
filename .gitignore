@@ -15,3 +15,16 @@ result_gps.txt
 camera_camera_calib.yaml
 camera_chessboard_data.dat
 .DS_Store
+
+# ROS2 build artifacts (colcon build)
+build/
+install/
+log/
+
+# Test data ros bags
+*.db3
+*.db3:Zone.Identifier
+test_data/.yaml
+test_data/*/*.yaml
+test_data/.yaml:Zone.Identifier
+test_data/*/*.yaml:Zone.Identifier
