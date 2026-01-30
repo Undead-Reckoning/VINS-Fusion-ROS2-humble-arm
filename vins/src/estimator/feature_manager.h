@@ -101,7 +101,7 @@ class FeaturePerId
 class FeatureManager
 {
   public:
-    FeatureManager(Eigen::Matrix3d* _Rs, LaserDepthProjector* lp = nullptr);
+    FeatureManager(Eigen::Matrix3d* _Rs, std::shared_ptr<LaserDepthProjector> lp = nullptr);
 
     void setRic(Matrix3d _ric[]);
     void clearState();
@@ -129,7 +129,7 @@ class FeatureManager
     int new_feature_num;
     int long_track_num;
 
-    void setLaserProjector(LaserDepthProjector* lp)
+    void setLaserProjector(std::shared_ptr<LaserDepthProjector> lp)
     {
         laser_projector = lp;
     }
@@ -139,7 +139,7 @@ class FeatureManager
     const Matrix3d *Rs;
     Matrix3d ric[2];
 
-    LaserDepthProjector* laser_projector = nullptr;
+    std::shared_ptr<LaserDepthProjector> laser_projector = nullptr;
 };
 
 #endif

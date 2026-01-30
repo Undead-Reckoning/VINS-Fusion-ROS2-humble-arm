@@ -37,7 +37,7 @@ int main(int argc, char** argv)
 	rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr pubLeftImage  = n->create_publisher<sensor_msgs::msg::Image>("/leftImage",1000);
 	rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr pubRightImage = n->create_publisher<sensor_msgs::msg::Image>("/rightImage",1000);
 
-	if(argc != 3)
+	if(argc < 3)
 	{
 		printf("please intput: rosrun vins kitti_odom_test [config file] [data folder] \n"
 			   "for example: rosrun vins kitti_odom_test "

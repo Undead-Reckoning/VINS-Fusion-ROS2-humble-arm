@@ -243,19 +243,25 @@ int main(int argc, char **argv)
     rclcpp::init(argc, argv);
 	auto n = rclcpp::Node::make_shared("vins_estimator");
     auto laser_projector = std::make_shared<LaserDepthProjector>();
+    laser_projector->loadLRFConfig("src/VINS-Fusion-ROS2-humble-arm/config/lrf/lrf_config.yaml");
     // ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info);
 
     auto sub_lrf = n->create_subscription<std_msgs::msg::Float32>(
         "/lrf",
         rclcpp::QoS(rclcpp::KeepLast(200)),
         std::bind(&LaserDepthProjector::updateRange,
-                laser_projector.get(),
-                std::placeholders::_1)
+              laser_projector,
+              std::placeholders::_1)
     );
-    // pass pointer into estimator / feature manager
-    estimator.setLaserProjector(laser_projector.get());
 
-    if(argc != 2)
+    std::bind(&LaserDepthProjector::updateRange,
+          laser_projector,
+          std::placeholders::_1);
+
+    // pass pointer into estimator / feature manager
+    estimator.setLaserProjector(laser_projector);
+
+    if(argc < 2)
     {
         printf("please intput: rosrun vins vins_node [config file] \n"
                "for example: rosrun vins vins_node "

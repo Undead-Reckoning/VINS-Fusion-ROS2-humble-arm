@@ -28,9 +28,7 @@ using namespace Eigen;
 class LaserDepthProjector
 {
 public:
-    cv::Mat depth_map;   // CV_32FC1, meters
-    cv::Mat depth_sigma_map;
-    Matrix3d R_cl;       // camera ← laser
+    Matrix3d R_cl;       // camera <- laser
     Vector3d t_cl;
     double sampling_rate;
     double laser_noise_std;
@@ -39,12 +37,12 @@ public:
     double laser_min_range;
     double laser_max_range;
 
-    int width, height;
-    double fx, fy, cx, cy;
-
     bool ready = false;
+
+    Eigen::Vector3d p_c;
+    Eigen::Vector3d plane_normal = Eigen::Vector3d(0, 0, 1);
 
     void updateRange(const std_msgs::msg::Float32::SharedPtr msg);
     bool getDepth(double u_norm, double v_norm, double &depth_out, double &sigma_out);
-    void loadLRFConfig(std::string path1, std::string path2);
+    void loadLRFConfig(std::string path);
 };

@@ -17,7 +17,7 @@ int FeaturePerId::endFrame()
     return start_frame + feature_per_frame.size() - 1;
 }
 FeatureManager::FeatureManager(Eigen::Matrix3d* _Rs,
-                               LaserDepthProjector* lp)
+                               std::shared_ptr<LaserDepthProjector> lp)
     : Rs(_Rs), laser_projector(lp)
 {
     for (int i = 0; i < NUM_OF_CAM; i++)
@@ -63,18 +63,13 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
     new_feature_num = 0;
     long_track_num = 0;
 
-    LaserDepthProjector* laser_projector;
-    laser_projector->loadLRFConfig("../../../config/lrf/lrf_config.yaml", "../../../config/euroc/cam0_pinhole.yaml");
-    laser_projector->width = COL;
-    laser_projector->height = ROW;
-
     for (auto &id_pts : image)
     {
         FeaturePerFrame f_per_fra(id_pts.second[0].second, td);
 
         // Lookup depth from depth image or laser projection
         double depth, sigma;
-        if (laser_projector && laser_projector->getDepth(f_per_fra.point(0), f_per_fra.point(1), depth, sigma))
+        if (laser_projector && laser_projector->ready && laser_projector->getDepth(f_per_fra.point(0), f_per_fra.point(1), depth, sigma))
         {
             f_per_fra.setLaserDepth(depth, sigma);
         }
@@ -106,6 +101,8 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
                 long_track_num++;
         }
     }
+
+    laser_projector->ready = false;
 
     //if (frame_count < 2 || last_track_num < 20)
     //if (frame_count < 2 || last_track_num < 20 || new_feature_num > 0.5 * last_track_num)
@@ -386,8 +383,38 @@ void FeatureManager::triangulate(int frameCnt, Vector3d Ps[], Matrix3d Rs[], Vec
             double depth = localPoint.z();
             if (depth > 0)
                 it_per_id.estimated_depth = depth;
+
+                FeaturePerFrame &f0 = it_per_id.feature_per_frame.front();
+                // Weight laser depth and triangulation values
+                if (f0.has_laser_depth)
+                {
+                    double z_l = f0.laser_depth;
+                    double s_l = f0.depth_sigma;
+
+                    double z_t = it_per_id.estimated_depth;
+                    double s_t = 0.02 * z_t;   // approx triangulation uncertainty
+
+
+                    if (z_t > 0)
+                    {
+                        double w_l = 1.0 / (s_l * s_l);
+                        double w_t = 1.0 / (s_t * s_t);
+
+                        double z_fused = (z_l * w_l + z_t * w_t) / (w_l + w_t);
+
+                        it_per_id.estimated_depth = z_fused;
+                        it_per_id.solve_flag = 1;
+                    }
+                    else
+                    {
+                        it_per_id.estimated_depth = z_l;
+                        it_per_id.solve_flag = 1;
+                    }
+                }
             else
                 it_per_id.estimated_depth = INIT_DEPTH;
+
+            printf("depth: %f:", it_per_id.estimated_depth);
             /*
             Vector3d ptsGt = pts_gt[it_per_id.feature_id];
             printf("motion  %d pts: %f %f %f gt: %f %f %f \n",it_per_id.feature_id, point3d.x(), point3d.y(), point3d.z(),
@@ -395,6 +422,7 @@ void FeatureManager::triangulate(int frameCnt, Vector3d Ps[], Matrix3d Rs[], Vec
             */
             continue;
         }
+
         it_per_id.used_num = it_per_id.feature_per_frame.size();
         if (it_per_id.used_num < 4)
             continue;
@@ -444,28 +472,6 @@ void FeatureManager::triangulate(int frameCnt, Vector3d Ps[], Matrix3d Rs[], Vec
 
         if (it_per_id.feature_per_frame.empty())
             continue;
-
-        FeaturePerFrame &f0 = it_per_id.feature_per_frame.front();
-
-        // 1) Weight laser depth and triangulation values
-        if (f0.has_laser_depth)
-        {
-            double z_l = f0.laser_depth;
-            double s_l = f0.depth_sigma;
-
-            double z_t = it_per_id.estimated_depth;
-            double s_t = 0.25 * z_t;   // approx triangulation uncertainty
-
-            double w_l = 1.0 / (s_l * s_l);
-            double w_t = 1.0 / (s_t * s_t);
-
-            cout << "laserDepth: " << z_l << ", laserDepthSigma: " << s_l << ", triangulationDepthSigma: " << s_t << endl;
-
-            double z_fused = (z_l * w_l + z_t * w_t) / (w_l + w_t);
-
-            it_per_id.estimated_depth = z_fused;
-            it_per_id.solve_flag = 1;
-        }
 
     }
 }

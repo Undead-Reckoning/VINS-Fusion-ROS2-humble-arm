@@ -203,7 +203,7 @@ void Estimator::inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1)
     
 }
 
-void Estimator::setLaserProjector(LaserDepthProjector* lp)
+void Estimator::setLaserProjector(std::shared_ptr<LaserDepthProjector> lp)
 {
     f_manager.setLaserProjector(lp);
 }
