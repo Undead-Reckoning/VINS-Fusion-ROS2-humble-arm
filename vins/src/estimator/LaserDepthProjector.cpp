@@ -1,8 +1,12 @@
 #include "LaserDepthProjector.h"
 #include "../utility/visualization.h"
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
-#include <pcl_conversions/pcl_conversions.h>
+
+/*
+    MODIFIED    
+    Undead Reckoning
+    Date: 01/21/26
+    By: Quinn Levinson
+*/
 
 void LaserDepthProjector::updateRange(const std_msgs::msg::Float32::SharedPtr msg)
 {
@@ -95,3 +99,7 @@ void LaserDepthProjector::loadLRFConfig(std::string path)
 
     //std::cout << "[LRF] Config loaded successfully\n";
 }
+
+/*
+    END MODIFIED
+*/

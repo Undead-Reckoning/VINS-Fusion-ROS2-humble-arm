@@ -242,6 +242,13 @@ int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
 	auto n = rclcpp::Node::make_shared("vins_estimator");
+
+    /*
+        MODIFIED    
+        Undead Reckoning
+        Date: 01/21/26
+        By: Quinn Levinson
+    */
     auto laser_projector = std::make_shared<LaserDepthProjector>();
     laser_projector->loadLRFConfig("src/VINS-Fusion-ROS2-humble-arm/config/lrf/lrf_config.yaml");
     // ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info);
@@ -260,6 +267,10 @@ int main(int argc, char **argv)
 
     // pass pointer into estimator / feature manager
     estimator.setLaserProjector(laser_projector);
+
+    /*
+        END MODIFIED
+    */
 
     if(argc < 2)
     {

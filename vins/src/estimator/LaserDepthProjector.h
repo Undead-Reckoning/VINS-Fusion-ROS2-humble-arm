@@ -22,6 +22,13 @@
 #include <fstream>
 #include <map>
 
+/*
+    MODIFIED    
+    Undead Reckoning
+    Date: 01/21/26
+    By: Quinn Levinson
+*/
+
 using namespace std;
 using namespace Eigen;
 
@@ -46,3 +53,7 @@ public:
     bool getDepth(double u_norm, double v_norm, double &depth_out, double &sigma_out);
     void loadLRFConfig(std::string path);
 };
+
+/*
+    END MODIFIED
+*/

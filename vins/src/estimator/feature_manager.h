@@ -47,9 +47,21 @@ class FeaturePerFrame
         velocity.y() = _point(6); 
         cur_td = td;
         is_stereo = false;
+
+        /*
+          MODIFIED    
+          Undead Reckoning
+          Date: 01/21/26
+          By: Quinn Levinson
+        */
+
         laser_depth = -1;
         has_laser_depth = false;
         depth_sigma = -1;
+
+        /*
+          END MODIFIED
+        */
     }
     void rightObservation(const Eigen::Matrix<double, 7, 1> &_point)
     {
@@ -62,12 +74,24 @@ class FeaturePerFrame
         velocityRight.y() = _point(6); 
         is_stereo = true;
     }
+
+    /*
+      MODIFIED    
+      Undead Reckoning
+      Date: 01/21/26
+      By: Quinn Levinson
+    */
+
     void setLaserDepth(double d, double sigma)
     {
         laser_depth = d;
         has_laser_depth = true;
         depth_sigma = sigma;
     }
+
+    /*
+      END MODIFIED
+    */
     
     double cur_td;
     Vector3d point, pointRight;
@@ -101,7 +125,19 @@ class FeaturePerId
 class FeatureManager
 {
   public:
+
+    /*
+      MODIFIED    
+      Undead Reckoning
+      Date: 01/21/26
+      By: Quinn Levinson
+    */
+
     FeatureManager(Eigen::Matrix3d* _Rs, std::shared_ptr<LaserDepthProjector> lp = nullptr);
+
+    /*
+      END MODIFIED
+    */
 
     void setRic(Matrix3d _ric[]);
     void clearState();
@@ -129,17 +165,39 @@ class FeatureManager
     int new_feature_num;
     int long_track_num;
 
+    /*
+      MODIFIED    
+      Undead Reckoning
+      Date: 01/21/26
+      By: Quinn Levinson
+    */
+
     void setLaserProjector(std::shared_ptr<LaserDepthProjector> lp)
     {
         laser_projector = lp;
     }
+
+    /*
+      END MODIFIED
+    */
 
   private:
     double compensatedParallax2(const FeaturePerId &it_per_id, int frame_count);
     const Matrix3d *Rs;
     Matrix3d ric[2];
 
+    /*
+      MODIFIED    
+      Undead Reckoning
+      Date: 01/21/26
+      By: Quinn Levinson
+    */
+
     std::shared_ptr<LaserDepthProjector> laser_projector = nullptr;
+
+    /*
+      END MODIFIED
+    */
 };
 
 #endif

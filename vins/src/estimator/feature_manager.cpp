@@ -16,6 +16,14 @@ int FeaturePerId::endFrame()
 {
     return start_frame + feature_per_frame.size() - 1;
 }
+
+/*
+    MODIFIED    
+    Undead Reckoning
+    Date: 01/21/26
+    By: Quinn Levinson
+*/
+
 FeatureManager::FeatureManager(Eigen::Matrix3d* _Rs,
                                std::shared_ptr<LaserDepthProjector> lp)
     : Rs(_Rs), laser_projector(lp)
@@ -23,6 +31,10 @@ FeatureManager::FeatureManager(Eigen::Matrix3d* _Rs,
     for (int i = 0; i < NUM_OF_CAM; i++)
         ric[i].setIdentity();
 }
+
+/*
+    END MODIFIED
+*/
 
 void FeatureManager::setRic(Matrix3d _ric[])
 {
@@ -67,12 +79,23 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
     {
         FeaturePerFrame f_per_fra(id_pts.second[0].second, td);
 
+        /*
+            MODIFIED    
+            Undead Reckoning
+            Date: 01/21/26
+            By: Quinn Levinson
+        */
+
         // Lookup depth from depth image or laser projection
         double depth, sigma;
         if (laser_projector && laser_projector->ready && laser_projector->getDepth(f_per_fra.point(0), f_per_fra.point(1), depth, sigma))
         {
             f_per_fra.setLaserDepth(depth, sigma);
         }
+
+        /*
+            END MODIFIED
+        */
 
         assert(id_pts.second[0].first == 0);
         if(id_pts.second.size() == 2)
@@ -384,6 +407,13 @@ void FeatureManager::triangulate(int frameCnt, Vector3d Ps[], Matrix3d Rs[], Vec
             if (depth > 0)
                 it_per_id.estimated_depth = depth;
 
+                /*
+                    MODIFIED    
+                    Undead Reckoning
+                    Date: 01/21/26
+                    By: Quinn Levinson
+                */
+
                 FeaturePerFrame &f0 = it_per_id.feature_per_frame.front();
                 // Weight laser depth and triangulation values
                 if (f0.has_laser_depth)
@@ -414,7 +444,12 @@ void FeatureManager::triangulate(int frameCnt, Vector3d Ps[], Matrix3d Rs[], Vec
             else
                 it_per_id.estimated_depth = INIT_DEPTH;
 
-            printf("depth: %f:", it_per_id.estimated_depth);
+            printf("Triangulated/LRF Depth: %f\n", it_per_id.estimated_depth);
+
+            /*
+                END MODIFIED
+            */
+
             /*
             Vector3d ptsGt = pts_gt[it_per_id.feature_id];
             printf("motion  %d pts: %f %f %f gt: %f %f %f \n",it_per_id.feature_id, point3d.x(), point3d.y(), point3d.z(),

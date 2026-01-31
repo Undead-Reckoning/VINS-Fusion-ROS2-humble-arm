@@ -1,5 +1,10 @@
 %YAML:1.0
 
+# MODIFIED    
+# Undead Reckoning
+# Date: 01/21/26
+# By: Quinn Levinson
+
 #lrf parameters       The more accurate parameters you provide, the better performance
 laser_enable: true
 laser_topic: "/scan"
@@ -17,3 +22,5 @@ laser_resolution: 0.0001 # m
 laser_downsample: 1
 laser_min_range: 0.05 # m
 laser_max_range: 50.0 # m
+
+# END MODIFIED

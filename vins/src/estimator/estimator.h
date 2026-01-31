@@ -57,7 +57,19 @@ class Estimator
     void processImage(const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, const double header);
     void processMeasurements();
     void changeSensorType(int use_imu, int use_stereo);
+
+    /*
+        MODIFIED    
+        Undead Reckoning
+        Date: 01/21/26
+        By: Quinn Levinson
+    */
+
     void setLaserProjector(std::shared_ptr<LaserDepthProjector> lp);
+
+    /*
+        END MODIFIED
+    */
 
     // internal
     void clearState();
