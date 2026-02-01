@@ -1299,6 +1299,12 @@ void Estimator::optimization()
             }
         }
 
+        //Baro Marginalization
+        BarometerFactor* baro = new BarometerFactor(baro_z_by_frame[0], BARO_N);
+        ResidualBlockInfo *residual_block_info = new ResidualBlockInfo(baro, NULL, std::vector<double*>{para_Pose[0]}, std::vector<int>{0});
+        marginalization_info->addResidualBlockInfo(residual_block_info);
+
+
         {
             int feature_index = -1;
             for (auto &it_per_id : f_manager.feature)
