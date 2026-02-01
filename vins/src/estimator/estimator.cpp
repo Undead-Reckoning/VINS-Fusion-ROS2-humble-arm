@@ -1173,7 +1173,7 @@ void Estimator::optimization()
         if (i >= static_cast<int>(baro_z_by_frame.size()))
             break;
         double z = baro_z_by_frame[i];
-        if (Math::isfinite(z))
+        if (std::isfinite(z))
         {
             //double sigma = 1.0; // default measurement stddev (meters); adjust as needed
             BarometerFactor *baro = new BarometerFactor(z, BARO_N);

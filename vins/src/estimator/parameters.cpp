@@ -45,6 +45,7 @@ int USE_IMU;
 int MULTIPLE_THREAD;
 map<int, Eigen::Vector3d> pts_gt;
 std::string IMAGE0_TOPIC, IMAGE1_TOPIC;
+std::string BARO_TOPIC;
 std::string FISHEYE_MASK;
 std::vector<std::string> CAM_NAMES;
 int MAX_CNT;
@@ -114,8 +115,17 @@ void readParameters(std::string config_file)
         G.z() = fsSettings["g_norm"];
     }
 
+    fsSettings["baro_topic"] >> BARO_TOPIC;
+    printf("BARO_TOPIC from file: '%s'\n", BARO_TOPIC.c_str());
+    if(BARO_TOPIC.empty())
+    {
+        printf("BARO_TOPIC is empty, using default\n");
+        BARO_TOPIC = "/barometer";
+    }
+    printf("Final BARO_TOPIC: '%s'\n", BARO_TOPIC.c_str());
     //Barometer read in
     BARO_N = fsSettings["baro_n"];
+    printf("BARO_N: %f\n", BARO_N);
 
     SOLVER_TIME = fsSettings["max_solver_time"];
     NUM_ITERATIONS = fsSettings["max_num_iterations"];

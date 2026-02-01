@@ -59,3 +59,5 @@ class BarometerFactor : public ceres::SizedCostFunction<1, 7>
 
     double z_meas;    // measured altitude (m)
     double sqrt_info; // 1 / sigma
+  
+};

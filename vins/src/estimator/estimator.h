@@ -30,12 +30,12 @@
 #include "../initial/initial_alignment.h"
 #include "../initial/initial_ex_rotation.h"
 #include "../factor/imu_factor.h"
+#include "../factor/barometer_factor.h" //Barometer Addition
 #include "../factor/pose_local_parameterization.h"
 #include "../factor/marginalization_factor.h"
 #include "../factor/projectionTwoFrameOneCamFactor.h"
 #include "../factor/projectionTwoFrameTwoCamFactor.h"
 #include "../factor/projectionOneFrameTwoCamFactor.h"
-#include "../factor/barometer_factor.h" //Barometer Addition
 #include "../featureTracker/feature_tracker.h"
 
 #define ROS_INFO RCUTILS_LOG_INFO
