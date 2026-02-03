@@ -26,8 +26,10 @@ class BarometerFactor : public ceres::SizedCostFunction<1, 7>
     BarometerFactor(double z_meas_, double sigma)
       : z_meas(z_meas_)
     {
-      if (sigma <= 0)
+      if (sigma <= 0) {
+        ROS_WARN("BarometerFactor: Invalid sigma (%.3f). Setting to default 1.0 m", sigma);
         sigma = 1.0;
+      }
       sqrt_info = 1.0 / sigma;
     }
 

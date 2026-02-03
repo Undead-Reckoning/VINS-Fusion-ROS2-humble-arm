@@ -224,7 +224,7 @@ void Estimator::inputIMU(double t, const Vector3d &linearAcceleration, const Vec
 void Estimator::inputBaro(double t, double z)
 {
     mBuf.lock();
-    baroBuf.push(std::make_pair(t, z));
+    baroBuf.push(make_pair(t, z));
     mBuf.unlock();
 }
 
@@ -345,25 +345,6 @@ void Estimator::processMeasurements()
                     processIMU(accVector[i].first, dt, accVector[i].second, gyrVector[i].second);
                 }
             }
-            // Associate barometer measurements with this frame (store altitude in meters)
-            mBuf.lock();
-            if (baro_z_by_frame.size() < static_cast<size_t>(frame_count + 1))
-                baro_z_by_frame.resize(frame_count + 1, std::numeric_limits<double>::quiet_NaN());
-
-            // drop baro entries older than or equal to prevTime
-            while (!baroBuf.empty() && baroBuf.front().first <= prevTime)
-                baroBuf.pop();
-
-            if (!baroBuf.empty() && baroBuf.front().first <= curTime)
-            {
-                baro_z_by_frame[frame_count] = baroBuf.front().second;
-                baroBuf.pop();
-            }
-            else
-            {
-                baro_z_by_frame[frame_count] = std::numeric_limits<double>::quiet_NaN();
-            }
-            mBuf.unlock();
             
             // Baro Addition
             // Handle barometer measurements for this frame: assign altitude (meters) to baro_z_by_frame[frame_count]
@@ -1167,17 +1148,21 @@ void Estimator::optimization()
     }
 
     // Add barometer (altitude) residuals for frames that have measurements.
-    // `baro_z_by_frame` should be filled elsewhere (NaN if no measurement).
-    for (int i = 0; i < frame_count + 1; ++i)
+    // Only add if BARO_N > 0 (barometer is enabled) and measurement is valid (finite).
+    if (BARO_N > 0)
     {
-        if (i >= static_cast<int>(baro_z_by_frame.size()))
-            break;
-        double z = baro_z_by_frame[i];
-        if (std::isfinite(z))
+        for (int i = 0; i < frame_count + 1; ++i)
         {
-            //double sigma = 1.0; // default measurement stddev (meters); adjust as needed
-            BarometerFactor *baro = new BarometerFactor(z, BARO_N);
-            problem.AddResidualBlock(baro, NULL, para_Pose[i]);
+            if (i >= static_cast<int>(baro_z_by_frame.size()))
+                break;
+            double z = baro_z_by_frame[i];
+
+            if (std::isfinite(z))
+            {
+                ROS_DEBUG("Frame %d: Adding BarometerFactor with z=%.3f m", i, z);
+                BarometerFactor *baro = new BarometerFactor(z, BARO_N);
+                problem.AddResidualBlock(baro, NULL, para_Pose[i]);
+            }
         }
     }
 
@@ -1299,10 +1284,13 @@ void Estimator::optimization()
             }
         }
 
-        //Baro Marginalization
-        BarometerFactor* baro = new BarometerFactor(baro_z_by_frame[0], BARO_N);
-        ResidualBlockInfo *residual_block_info = new ResidualBlockInfo(baro, NULL, std::vector<double*>{para_Pose[0]}, std::vector<int>{0});
-        marginalization_info->addResidualBlockInfo(residual_block_info);
+        //Baro Marginalization - only add if barometer is enabled and measurement is valid
+        if (BARO_N > 0 && baro_z_by_frame.size() > 0 && std::isfinite(baro_z_by_frame[0]))
+        {
+            BarometerFactor* baro = new BarometerFactor(baro_z_by_frame[0], BARO_N);
+            ResidualBlockInfo *residual_block_info = new ResidualBlockInfo(baro, NULL, std::vector<double*>{para_Pose[0]}, std::vector<int>{0});
+            marginalization_info->addResidualBlockInfo(residual_block_info);
+        }
 
 
         {
