@@ -1211,7 +1211,7 @@ void Estimator::optimization()
                 {
                     // Create pitot factor with constant wind
                     ceres::CostFunction *pitot_function = 
-                        new PitotFactor(vx_meas, wind_velocity, PITOT_NOISE);
+                        new PitotFactor(vx_meas, PITOT_NOISE);
                     
                     // Add to optimization problem with HuberLoss
                     problem.AddResidualBlock(pitot_function, loss_function,
@@ -1240,7 +1240,7 @@ void Estimator::optimization()
 
     if (USE_GPU_CERES)
         // std::cout << "1" << endl;
-        options.dense_linear_algebra_library_type = ceres::CUDA;
+        options.dense_linear_algebra_library_type = ceres::LAPACK;// Changed this because CUDA wasn't a in ceres 
     else
         // std::cout << "2" << endl;
         options.linear_solver_type = ceres::DENSE_SCHUR;
