@@ -24,6 +24,9 @@ find_package(image_transport REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(Ceres REQUIRED)
 
+# Barometer Custom Message
+find_package(baro_msgs REQUIRED)
+
 include_directories(${CERES_INCLUDE_DIRS})
 
 # include camera_models
