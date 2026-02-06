@@ -10,17 +10,56 @@
 
 void LaserDepthProjector::updateRange(const std_msgs::msg::Float32::SharedPtr msg)
 {
+    const double r = msg->data;
 
-    double r = msg->data;
+    if (r < laser_min_range || r > laser_max_range)
+        return;
 
-    if (r < laser_min_range || r > laser_max_range) return;
+    const double t_now = rclcpp::Clock().now().seconds();
 
-    Eigen::Vector3d p_l(0.0, 0.0, r);
-    p_c = R_cl * p_l + t_cl;
-    
-    if (p_c.z() <= 0) return;
+    {
+        std::lock_guard<std::mutex> lock(buffer_mutex);
 
-    ready = true;
+        // Add new measurement
+        range_buffer.push_back({t_now, r});
+
+        // Remove measurements older than 1 second
+        while (!range_buffer.empty() && (t_now - range_buffer.front().t) > filter_window_sec)
+        {
+            range_buffer.pop_front();
+        }
+
+        if (range_buffer.empty())
+            return;
+
+        // Compute weighted average
+        double weighted_sum = 0.0;
+        double weight_sum   = 0.0;
+
+        const double alpha = 4.0; // decay rate (tunable)
+
+        for (const auto &m : range_buffer)
+        {
+            double age = t_now - m.t;
+            double w = std::exp(-alpha * age);
+            weighted_sum += w * m.r;
+            weight_sum   += w;
+        }
+
+        if (weight_sum <= 1e-6)
+            return;
+
+        double r_filtered = weighted_sum / weight_sum;
+
+        // Convert to camera frame
+        Eigen::Vector3d p_l(0.0, 0.0, r);
+        p_c = R_cl * p_l + t_cl;
+        
+        if (p_c.z() <= 0) return;
+
+        ready = true;
+        printf("Filtered Depth: %f\n",p_c.z());
+    }
 }
 
 bool LaserDepthProjector::getDepth(double u_norm, double v_norm, double &depth_out, double &sigma_out)

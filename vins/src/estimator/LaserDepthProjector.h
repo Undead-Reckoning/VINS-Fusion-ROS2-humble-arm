@@ -21,6 +21,7 @@
 #include "std_msgs/msg/float32.hpp"
 #include <fstream>
 #include <map>
+#include <deque>
 
 /*
     MODIFIED    
@@ -31,6 +32,12 @@
 
 using namespace std;
 using namespace Eigen;
+
+struct TimedRange
+{
+    double t;
+    double r;
+};
 
 class LaserDepthProjector
 {
@@ -52,6 +59,12 @@ public:
     void updateRange(const std_msgs::msg::Float32::SharedPtr msg);
     bool getDepth(double u_norm, double v_norm, double &depth_out, double &sigma_out);
     void loadLRFConfig(std::string path);
+
+private:
+    std::mutex buffer_mutex;
+    
+    std::deque<TimedRange> range_buffer;
+    double filter_window_sec = 1.0;   // 1 second
 };
 
 /*
