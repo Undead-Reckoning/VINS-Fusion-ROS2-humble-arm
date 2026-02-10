@@ -202,10 +202,10 @@ void feature_callback(const sensor_msgs::msg::PointCloud::SharedPtr feature_msg)
     return;
 }
 
-void baro_callback(const baro_msg::msg::BaroData::SharedPtr baro_msg)
+void baro_callback(const baro_msgs::msg::BaroData::SharedPtr baro_msg)
 {
     double t = baro_msg->header.stamp.sec + baro_msg->header.stamp.nanosec * (1e-9);
-    double z = baro_msg->data; // assume altitude in meters
+    double z = baro_msg->altitude; // assume altitude in meters
     estimator.inputBaro(t, z);
     return;
 }
@@ -296,7 +296,7 @@ int main(int argc, char **argv)
     
     // Baro subscription to BARO_TOPIC
 
-    auto sub_baro = n->create_subscription<baro_msg::msg::BaroData>(BARO_TOPIC, rclcpp::QoS(rclcpp::KeepLast(200)), baro_callback);
+    auto sub_baro = n->create_subscription<baro_msgs::msg::BaroData>(BARO_TOPIC, rclcpp::QoS(rclcpp::KeepLast(200)), baro_callback);
 
 
     auto sub_restart = n->create_subscription<std_msgs::msg::Bool>("/vins_restart", rclcpp::QoS(rclcpp::KeepLast(100)), restart_callback);

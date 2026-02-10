@@ -32,6 +32,9 @@ include_directories(${CERES_INCLUDE_DIRS})
 # include camera_models
 include_directories("../camera_models/include")
 
+# include baro_msgs
+# include_directories("../baro_msgs/include")
+
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 find_package(Eigen3)
 include_directories(
@@ -58,18 +61,18 @@ add_library(vins_lib
     src/featureTracker/feature_tracker.cpp)
 target_link_libraries(vins_lib  ${OpenCV_LIBS} ${CERES_LIBRARIES})
 
-ament_target_dependencies(vins_lib rclcpp rcpputils std_msgs visualization_msgs geometry_msgs nav_msgs tf2 tf2_ros cv_bridge camera_models image_transport)
+ament_target_dependencies(vins_lib rclcpp rcpputils std_msgs visualization_msgs geometry_msgs nav_msgs tf2 tf2_ros cv_bridge camera_models image_transport baro_msgs)
 
 add_executable(vins_node src/rosNodeTest.cpp)
-ament_target_dependencies(vins_node rclcpp rcpputils std_msgs visualization_msgs geometry_msgs nav_msgs tf2 tf2_ros cv_bridge camera_models image_transport)
+ament_target_dependencies(vins_node rclcpp rcpputils std_msgs visualization_msgs geometry_msgs nav_msgs tf2 tf2_ros cv_bridge camera_models image_transport baro_msgs)
 target_link_libraries(vins_node vins_lib) 
 
 add_executable(kitti_odom_test src/KITTIOdomTest.cpp)
-ament_target_dependencies(kitti_odom_test rclcpp rcpputils std_msgs visualization_msgs geometry_msgs nav_msgs tf2 tf2_ros cv_bridge camera_models image_transport)
+ament_target_dependencies(kitti_odom_test rclcpp rcpputils std_msgs visualization_msgs geometry_msgs nav_msgs tf2 tf2_ros cv_bridge camera_models image_transport baro_msgs)
 target_link_libraries(kitti_odom_test vins_lib) 
 
 add_executable(kitti_gps_test src/KITTIGPSTest.cpp)
-ament_target_dependencies(kitti_gps_test rclcpp rcpputils std_msgs visualization_msgs geometry_msgs nav_msgs tf2 tf2_ros cv_bridge camera_models image_transport)
+ament_target_dependencies(kitti_gps_test rclcpp rcpputils std_msgs visualization_msgs geometry_msgs nav_msgs tf2 tf2_ros cv_bridge camera_models image_transport baro_msgs)
 target_link_libraries(kitti_gps_test vins_lib) 
 
 # added from DEBUG
