@@ -7,13 +7,15 @@ This is a replacement for the buggy MATLAB ros2bagwriter.
 import sys
 import os
 from pathlib import Path
+import math
+import random
 
 try:
     from rosbag2_py import SequentialReader, SequentialWriter
     from rosbag2_py import StorageOptions, ConverterOptions, TopicMetadata
     from rclpy.serialization import deserialize_message, serialize_message
     from rosidl_runtime_py.utilities import get_message
-    from std_msgs.msg import Float32
+    from sensor_msgs.msg import Range
 except ImportError as e:
     print(f"Error: Missing required Python packages.")
     print(f"Please install: pip install rosbag2-py rclpy")
@@ -78,11 +80,11 @@ def copy_bag_with_lrf(input_bag_path, output_bag_path, lrf_frequency=20.0, durat
     # Add LRF topic
     lrf_topic = TopicMetadata(
         name='/lrf',
-        type='std_msgs/msg/Float32',
+        type='sensor_msgs/msg/Range',
         serialization_format='cdr'
     )
     writer.create_topic(lrf_topic)
-    print(f"  - /lrf (std_msgs/msg/Float32) [NEW]")
+    print(f"  - /lrf (sensor_msgs/msg/Range) [NEW]")
     
     # Copy all messages
     print("\nCopying messages...")
@@ -126,11 +128,32 @@ def copy_bag_with_lrf(input_bag_path, output_bag_path, lrf_frequency=20.0, durat
     duration_s = (end_time - start_time) / 1e9
     num_lrf_samples = int(duration_s * lrf_frequency)
     
-    lrf_msg = Float32()
-    lrf_msg.data = 5.0
-    
+    lrf_msg = Range()
+    lrf_msg.radiation_type = Range.INFRARED
+    lrf_msg.field_of_view = 0.01
+    lrf_msg.min_range = 5.0
+    lrf_msg.max_range = 50.0
+    lrf_msg.header.frame_id = "lrf"
+
+    dt_ns = int(1e9 / lrf_frequency)
+
     for i in range(num_lrf_samples):
-        timestamp = start_time + int((i / lrf_frequency) * 1e9)
+
+        timestamp = start_time + i * dt_ns
+
+        base_range = 6.0 + 0.3 * math.sin(2.0 * math.pi * 0.2 * i / lrf_frequency)
+        noise = random.gauss(0.0, 0.03)
+        simulated_range = base_range + noise
+
+        simulated_range = max(
+            lrf_msg.min_range,
+            min(lrf_msg.max_range, simulated_range)
+        )
+
+        lrf_msg.range = simulated_range
+        lrf_msg.header.stamp.sec = timestamp // 1_000_000_000
+        lrf_msg.header.stamp.nanosec = timestamp % 1_000_000_000
+
         writer.write('/lrf', serialize_message(lrf_msg), timestamp)
     
     print(f"Added {num_lrf_samples} LRF messages (constant height = 0.0 m)")

@@ -18,7 +18,7 @@
 #include "../utility/utility.h"
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/eigen.hpp>
-#include "std_msgs/msg/float32.hpp"
+#include "sensor_msgs/msg/range.hpp"
 #include <fstream>
 #include <map>
 #include <deque>
@@ -56,7 +56,7 @@ public:
     Eigen::Vector3d p_c;
     Eigen::Vector3d plane_normal = Eigen::Vector3d(0, 0, 1);
 
-    void updateRange(const std_msgs::msg::Float32::SharedPtr msg);
+    void updateRange(const sensor_msgs::msg::Range::SharedPtr msg);
     bool getDepth(double u_norm, double v_norm, double &depth_out, double &sigma_out);
     void loadLRFConfig(std::string path);
 

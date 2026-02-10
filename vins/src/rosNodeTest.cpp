@@ -21,6 +21,7 @@
 #include "estimator/parameters.h"
 #include "utility/visualization.h"
 #include "std_msgs/msg/float32.hpp"
+#include "sensor_msgs/msg/range.hpp"
 
 Estimator estimator;
 
@@ -253,7 +254,7 @@ int main(int argc, char **argv)
     laser_projector->loadLRFConfig("src/VINS-Fusion-ROS2-humble-arm/config/lrf/lrf_config.yaml");
     // ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info);
 
-    auto sub_lrf = n->create_subscription<std_msgs::msg::Float32>(
+    auto sub_lrf = n->create_subscription<sensor_msgs::msg::Range>(
         "/lrf",
         rclcpp::QoS(rclcpp::KeepLast(200)),
         std::bind(&LaserDepthProjector::updateRange,

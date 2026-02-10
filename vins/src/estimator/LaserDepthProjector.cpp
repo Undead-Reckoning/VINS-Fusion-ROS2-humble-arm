@@ -8,58 +8,58 @@
     By: Quinn Levinson
 */
 
-void LaserDepthProjector::updateRange(const std_msgs::msg::Float32::SharedPtr msg)
+void LaserDepthProjector::updateRange(const sensor_msgs::msg::Range::SharedPtr msg)
 {
-    const double r = msg->data;
+    const double r = msg->range;
 
     if (r < laser_min_range || r > laser_max_range)
         return;
 
-    const double t_now = rclcpp::Clock().now().seconds();
+    const double t_now =
+        msg->header.stamp.sec +
+        1e-9 * msg->header.stamp.nanosec;
 
+    std::lock_guard<std::mutex> lock(buffer_mutex);
+
+    range_buffer.push_back({t_now, r});
+
+    while (!range_buffer.empty() &&
+           (t_now - range_buffer.front().t) > filter_window_sec)
     {
-        std::lock_guard<std::mutex> lock(buffer_mutex);
-
-        // Add new measurement
-        range_buffer.push_back({t_now, r});
-
-        // Remove measurements older than 1 second
-        while (!range_buffer.empty() && (t_now - range_buffer.front().t) > filter_window_sec)
-        {
-            range_buffer.pop_front();
-        }
-
-        if (range_buffer.empty())
-            return;
-
-        // Compute weighted average
-        double weighted_sum = 0.0;
-        double weight_sum   = 0.0;
-
-        const double alpha = 4.0; // decay rate (tunable)
-
-        for (const auto &m : range_buffer)
-        {
-            double age = t_now - m.t;
-            double w = std::exp(-alpha * age);
-            weighted_sum += w * m.r;
-            weight_sum   += w;
-        }
-
-        if (weight_sum <= 1e-6)
-            return;
-
-        double r_filtered = weighted_sum / weight_sum;
-
-        // Convert to camera frame
-        Eigen::Vector3d p_l(0.0, 0.0, r);
-        p_c = R_cl * p_l + t_cl;
-        
-        if (p_c.z() <= 0) return;
-
-        ready = true;
-        printf("Filtered Depth: %f\n",p_c.z());
+        range_buffer.pop_front();
     }
+
+    if (range_buffer.empty())
+        return;
+
+    double weighted_sum = 0.0;
+    double weight_sum   = 0.0;
+
+    const double alpha = 4.0;
+
+    for (const auto &m : range_buffer)
+    {
+        double age = t_now - m.t;
+        double w = std::exp(-alpha * age);
+
+        weighted_sum += w * m.r;
+        weight_sum   += w;
+    }
+
+    if (weight_sum <= 1e-6)
+        return;
+
+    const double r_filtered = weighted_sum / weight_sum;
+
+    Eigen::Vector3d p_l(0.0, 0.0, r_filtered);
+    p_c = R_cl * p_l + t_cl;
+
+    if (p_c.z() <= 0)
+        return;
+
+    ready = true;
+
+    printf("Filtered Depth: %f\n", p_c.z());
 }
 
 bool LaserDepthProjector::getDepth(double u_norm, double v_norm, double &depth_out, double &sigma_out)
