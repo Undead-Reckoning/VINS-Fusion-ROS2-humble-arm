@@ -28,3 +28,4 @@ test_data/.yaml
 test_data/*/*.yaml
 test_data/.yaml:Zone.Identifier
 test_data/*/*.yaml:Zone.Identifier
+*.csv

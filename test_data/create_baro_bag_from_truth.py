@@ -9,12 +9,14 @@ import os
 from pathlib import Path
 import csv
 import numpy as np
+import rclpy
 
 try:
     from rosbag2_py import SequentialReader, SequentialWriter
     from rosbag2_py import StorageOptions, ConverterOptions, TopicMetadata
     from rclpy.serialization import serialize_message
-    from std_msgs.msg import Float32
+    from std_msgs.msg import Header
+    from baro_msgs.msg import BaroData
 except ImportError as e:
     print(f"Error: Missing required Python packages.")
     print(f"Please install: pip install rosbag2-py rclpy")
@@ -114,11 +116,11 @@ def create_baro_bag_from_truth(input_bag_path, output_bag_path, truth_csv_path,
     # Add barometer topic
     baro_topic = TopicMetadata(
         name='/baro',
-        type='std_msgs/msg/Float32',
+        type='baro_msgs/msg/BaroData',
         serialization_format='cdr'
     )
     writer.create_topic(baro_topic)
-    print(f"  - /baro (std_msgs/msg/Float32) [NEW - from ground truth]")
+    print(f"  - /baro (baro_msgs/msg/BaroData) [NEW - from ground truth]")
     
     # Copy all messages
     print("\nCopying messages...")
@@ -194,8 +196,14 @@ def create_baro_bag_from_truth(input_bag_path, output_bag_path, truth_csv_path,
         heights_used.append(height)
         
         # Create and write barometer message
-        baro_msg = Float32()
-        baro_msg.data = float(height)
+        header = Header()
+        header.stamp.sec = int(timestamp // 1_000_000_000)
+        header.stamp.nanosec = int(timestamp % 1_000_000_000)
+        header.frame_id = 'barometer'
+        
+        baro_msg = BaroData()
+        baro_msg.header = header
+        baro_msg.altitude = float(height)
         writer.write('/baro', serialize_message(baro_msg), timestamp)
     
     # Cleanup
