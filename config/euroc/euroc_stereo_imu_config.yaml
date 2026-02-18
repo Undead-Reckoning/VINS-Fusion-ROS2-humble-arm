@@ -44,12 +44,12 @@ body_T_cam1: !!opencv-matrix
           0, 0, 0, 1]
 
 #Pitot tube configuration
-use_pitot: 0 #1 = use pitot tube, 0 = don't use pitot tube
+use_pitot: 1 #1 = use pitot tube, 0 = don't use pitot tube
 pitot_tube_topic: "/pitot_tube/airspeed" # ROS2 topic for pitot tube airspeed measurements
 pitot_noise: 0.5 # Measurement noise std dev (m/s)
 initial_wind:
-        x: 0.0
-        y: 0.0
+        x: 0.0 
+        y: 0.0 
         z: 0.0
 
 #Multiple thread support

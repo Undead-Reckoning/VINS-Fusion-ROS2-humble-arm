@@ -20,7 +20,7 @@
 #include "estimator/estimator.h"
 #include "estimator/parameters.h"
 #include "utility/visualization.h"
-#include "std_msgs/msg/float64.hpp"
+#include "geometry_msgs/msg/twist_stamped.hpp"
 #include "geometry_msgs/msg/vector3.hpp"
 
 Estimator estimator;
@@ -32,14 +32,17 @@ queue<sensor_msgs::msg::Image::ConstPtr> img1_buf;
 std::mutex m_buf;
 
 // Pitot tube callback - receives vx measurements
-void pitot_callback(const std_msgs::msg::Float64::SharedPtr pitot_msg)
+void pitot_callback(const std_msgs::msg::TwistStamped::SharedPtr pitot_msg)
 {
     if (!USE_PITOT)
         return;
     
-    double t = rclcpp::Clock().now().seconds();
-    double vx_meas = pitot_msg->data;
+    //double t = rclcpp::Clock().now().seconds();
+    double t = pitot_msg->header.stamp.sec + pitot_msg->header.stamp.nanosec * (1e-9);
     
+    // Only component that we care about
+    double vx_meas = pitot_msg->twist.linear.x; //velocity measurement is in the x component of the Twist message
+
     estimator.inputPitot(t, vx_meas);
 }
 
@@ -308,18 +311,18 @@ int main(int argc, char **argv)
     }
 
     // Subscribe to pitot tube
-    rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr pitot_sub;
+    rclcpp::Subscription<geometry_msgs::msg::TwistStamped::SharedPtr> pitot_sub;
     if (USE_PITOT)
     {
-        pitot_sub = n->create_subscription<std_msgs::msg::Float64>(
-            PITOT_TUBE_TOPIC,  // ← Uses the variable from parameters
+        pitot_sub = n->create_subscription<geometry_msgs::msg::TwistStamped::SharedPtr>(
+            PITOT_TUBE_TOPIC,  // Uses the variable from parameters
             100,
             pitot_callback
         );
         ROS_INFO("Subscribed to pitot topic: %s", PITOT_TUBE_TOPIC.c_str());
     }
     
-    // Subscribe to wind updates (optional)
+    // Subscribe to wind, to publish
     auto wind_sub = n->create_subscription<geometry_msgs::msg::Vector3>(
         "/weather_station/wind",
         10,

@@ -216,6 +216,7 @@ void Estimator::inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1)
 
 void Estimator::inputPitot(double t, double vx_meas){
     pitot_buf[t] = vx_meas; // stores pitot measurements from ROS callback in buffer with timestamp
+    ROS_INFO("Received pitot measurement: vx = %.2f m/s at time %.2f", vx_meas, t,(int)pitot_buf.size()); // for debugging, so we can verify that pitot measurements are being received correctly
 }
 
 void Estimator::setWindVelocity(const Eigen::Vector3d &wind)
