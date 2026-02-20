@@ -9,6 +9,8 @@
 
 #include <ceres/ceres.h>
 
+#include <fstream>
+
 #define ROS_INFO RCUTILS_LOG_INFO
 #define ROS_WARN RCUTILS_LOG_WARN
 #define ROS_ERROR RCUTILS_LOG_ERROR
@@ -35,28 +37,38 @@ class MagnetometerFactor : public ceres::SizedCostFunction<3, 7>
     virtual bool Evaluate(double const *const *parameters, double *residuals, double **jacobians) const
     {
         // pose parameterization in this codebase: [px, py, pz, qx, qy, qz, qw]
-        const double qz = parameters[0][5];
-
+        //const double qz = parameters[0][5];
+        //cout << parameters[0][6] << endl;
         Eigen::Quaterniond q(parameters[0][6], parameters[0][3], parameters[0][4], parameters[0][5]);
         Eigen::Matrix3d Rwb = q.toRotationMatrix();
 
 
-        //residual
-        mag_inert_norm = Eigen::Vector3d(0,1,0).normalized(); //Magnetic North, assumed temp
-        m_meas = Eigen::Vector3d(x_meas, y_meas, z_meas);
-        //m_meas_norm = Eigen::Vector3d(meas./(x_meas**2 + y_meas**2 + z_meas**2));
-        m_meas_norm = m_meas.normalized();
+        //residual 
+        // Use world magnetic field from parameters (configured in YAML config file)
+        Eigen::Vector3d mag_inert = MAG_WORLD_FIELD;
+        Eigen::Vector3d mag_inert_norm = mag_inert.normalized();
+        
+        Eigen::Vector3d m_meas = Eigen::Vector3d(x_meas, y_meas, z_meas);
+
+        //file for testing
+        //std::ofstream measfile("/tmp/TESTING_MEAS_G_V8.csv", std::ios::app);
+        //measfile << x_meas << " " << y_meas << " " << z_meas << std::endl;
+        //measfile.flush();
+        //measfile.close();
+
+        Eigen::Vector3d m_meas_norm = m_meas.normalized();
 
         //transpose
         Eigen::Map<Eigen::Vector3d> res(residuals);
-        residuals = (m_meas_norm - Rwb.transpose() * mag_inert_norm) * sqrt_info;
+        res = (m_meas_norm - Rwb.transpose() * mag_inert_norm) * sqrt_info;
+        //cout << "RESIDUALS: " << (m_meas - Rwb.transpose() * mag_inert) << endl;
              // (jacobians && jacobians[0])
        if (jacobians && jacobians[0]){
             Eigen::Map<Eigen::Matrix<double, 3, 7, Eigen::RowMajor>> jacobian_pose_mag(jacobians[0]);
             jacobian_pose_mag.setZero();
-            //Eigen::Matrix3d jacobian_rotation = -Rwb.transpose() * skew(mag_inert_norm);
-            Eigen::Matrix3d jacobian_mag = -Rwb.transpose() * mag_inert_norm;
-            jacobian_pose_mag.block<3,3>(0,3) = jacobian_mag; //maybe remove prev negative, add neg skew() around here
+            Eigen::Vector3d mag_body = Rwb.transpose() * mag_inert_norm; //here
+            jacobian_pose_mag.block<3,3>(0,3) = -Utility::skewSymmetric(mag_body) * sqrt_info;
+            //jacobian_pose_mag *= sqrt_info;
        }
 
 
@@ -64,7 +76,8 @@ class MagnetometerFactor : public ceres::SizedCostFunction<3, 7>
     }
     void setMeasurement(double z, double sigma)
     {
-        z_meas = z;
+      cout << "SETMEASUREMENT" << endl;
+        //z_meas = z;
         if (sigma <= 0)
             sigma = 1.0;
         sqrt_info = 1.0 / sigma;
@@ -74,3 +87,7 @@ class MagnetometerFactor : public ceres::SizedCostFunction<3, 7>
     double y_meas;
     double z_meas;
     double sqrt_info; // 1 / sigma
+    //double m_meas_norm;
+    //double m_meas;
+    //double mag_inert_norm;
+  };

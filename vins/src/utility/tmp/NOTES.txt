@@ -1,0 +1,10 @@
+in each terminal:
+source /opt/ros/humble/setup.bash
+source ~/vins_ws/src/VINS-Fusion-ROS2-humble-arm/install/setup.bash
+Rebuild workspace
+Run:
+colcon build --symlink-install 
+-> ros2 run vins vins_node ~/vins_ws/src/VINS-Fusion-ROS2-humble-arm/config/euroc/euroc_stereo_imu_config.yaml 
+ros2 launch vins vins_rviz.launch.xml 
+python3 create_mag_bag_truth.py test_data/V1_02_medium/ test_data/V1_02_mag_truth/ test_data/V1_02_medium_truth/V1_02_medium.csv config/euroc/euroc_stereo_imu_config.yaml 20
+-> ros2 bag play test_data/[to db3] || ros2 bag play test_data/V1_02_mag_truth/V1_02_mag_truth_0.db3

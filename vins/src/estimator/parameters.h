@@ -40,6 +40,9 @@ extern int USE_GPU_CERES;
 extern double ACC_N, ACC_W;
 extern double GYR_N, GYR_W;
 
+extern double MAG_N;
+extern Eigen::Vector3d MAG_WORLD_FIELD;
+
 extern std::vector<Eigen::Matrix3d> RIC;
 extern std::vector<Eigen::Vector3d> TIC;
 extern Eigen::Vector3d G;
@@ -64,6 +67,7 @@ extern int MULTIPLE_THREAD;
 extern map<int, Eigen::Vector3d> pts_gt;
 
 extern std::string IMAGE0_TOPIC, IMAGE1_TOPIC;
+extern std::string MAG_TOPIC;
 extern std::string FISHEYE_MASK;
 extern std::vector<std::string> CAM_NAMES;
 extern int MAX_CNT;

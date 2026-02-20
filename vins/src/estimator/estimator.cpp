@@ -9,6 +9,8 @@
 
 #include "estimator.h"
 #include "../utility/visualization.h"
+#include <fstream>
+#include <iostream>
 
 Estimator::Estimator(): f_manager{Rs}
 {
@@ -76,7 +78,7 @@ void Estimator::clearState()
     solver_flag = INITIAL;
     initial_timestamp = 0;
     all_image_frame.clear();
-    gps_avail= false;
+    //gps_avail= false,
 
     if (tmp_pre_integration != nullptr)
     {
@@ -92,6 +94,7 @@ void Estimator::clearState()
     tmp_pre_integration = nullptr;
     last_marginalization_info = nullptr;
     last_marginalization_parameter_blocks.clear();
+    mag_by_frame.clear();
 
     f_manager.clearState();
 
@@ -225,6 +228,9 @@ void Estimator::inputMag(double t, const Vector3d &magneticField)
 {
     mBuf.lock();
     magBuf.push(make_pair(t, magneticField));
+    //cout << "pair " << t << " " << magneticField << endl;
+    //cout << "size " << magBuf.size() << endl;
+    //cout << "magBuf pair " << make_pair(t, magneticField) << endl;
     mBuf.unlock();
 }
 
@@ -352,18 +358,25 @@ void Estimator::processMeasurements()
             if (mag_by_frame.size() < static_cast<size_t>(frame_count + 1))
                 mag_by_frame.resize(frame_count + 1,
                     Eigen::Vector3d::Constant(std::numeric_limits<double>::quiet_NaN()));
+                    //cout << "first if" << endl;
 
             // Drop old measurements
+            //cout << "prevTime " << prevTime << " curTime " << magBuf.front().first << endl;
+            //cout << "prevTime " << prevTime << " first " << magBuf.front().first << endl;
             while (!magBuf.empty() && magBuf.front().first <= prevTime)
+                //cout << "WHILE TRUE" << endl;
                 magBuf.pop();
-
+            
+            //cout << "magBuf" << magBuf.empty() << endl;
             if (!magBuf.empty() && magBuf.front().first <= curTime)
             {
+                //cout << "if empty" << endl;
                 mag_by_frame[frame_count] = magBuf.front().second;
                 magBuf.pop();
             }
             else
             {
+                //cout << "else" << endl;
                 mag_by_frame[frame_count].setConstant(
                     std::numeric_limits<double>::quiet_NaN());
             }
@@ -850,13 +863,23 @@ bool Estimator::visualInitialAlign()
     }
 
     Matrix3d R0 = Utility::g2R(g); //initial rotation matrix w/ gravity direction down
+
+    // Try to get world frame from config yaml
+    //uncommented
     double yaw = Utility::R2ypr(R0 * Rs[0]).x(); //Yaw between WF and Initial body frame
     
     //declaring GPS north alignment
-    //R0 = Utility::ypr2R(Eigen::Vector3d{-yaw, 0, 0}) * R0; //Yaw is zeroed with W yaw align to B yaw
-    R0 = Utility::ypr2R(Eigen::Vector3d{gps_yaw, 0, 0}) * R0;  // GPS yaw instead
+    //uncommented
+    R0 = Utility::ypr2R(Eigen::Vector3d{-yaw, 0, 0}) * R0; //Yaw is zeroed with W yaw align to B yaw
+    //R0 = Utility::ypr2R(Eigen::Vector3d{gps_yaw, 0, 0}) * R0;  // GPS yaw instead
     //R0 rotates the world frame wrt yaw to make current ac heading new reference
     //Ex. if A/C starts at Xdeg from GPS north, the R0 will define the body frame as zero yaw, Xdeg rotation from world frame. Any deviation from this heading yaw will result in a R0 yaw of non-zero.
+
+    //Testing if error offset of 45deg yaw (neg)
+    //double yaw_err = 45 * 0.0174532925;
+    //Matrix3d R_err = Utility::ypr2R(Eigen::Vector3d(-yaw_err,0,0));
+    //R0 = R_err * R0;
+    //End of testing
 
     g = R0 * g;
     //Matrix3d rot_diff = R0 * Rs[0].transpose();
@@ -1159,11 +1182,20 @@ void Estimator::optimization()
     //magnetometer addition
     for (int i=0; i < frame_count; i++)
     {
+
         if (i >= static_cast<int>(mag_by_frame.size()))
             break;
-        double magneticField = mag_by_frame[i];
-        if (MATH::isfinite(magneticField)){
-            MagnetometerFactor* mag_factor = new MagnetometerFactor(magneticField, mag_ref);
+        Eigen::Vector3d magneticField = mag_by_frame[i];
+        //cout << "magneticField " << mag_by_frame[i] << endl;
+        if (magneticField.allFinite()){
+            MagnetometerFactor* mag_factor = new MagnetometerFactor(magneticField[0], magneticField[1], magneticField[2], MAG_N);
+
+            //std::ofstream measfile("/tmp/TESTING_MEAS_V1.csv", std::ios::app);
+            //cout << "HERE" << endl;
+            //measfile << magneticField[0] << " " << magneticField[1] << " " << magneticField[2] << std::endl;
+            //measfile.flush();
+            //measfile.close();
+            
             problem.AddResidualBlock(mag_factor, NULL, para_Pose[i]);
         }
     }
@@ -1223,7 +1255,9 @@ void Estimator::optimization()
 
     if (USE_GPU_CERES)
         // std::cout << "1" << endl;
-        options.dense_linear_algebra_library_type = ceres::CUDA;
+        //options.dense_linear_algebra_library_type = ceres::CUDA;
+        options.dense_linear_algebra_library_type = ceres::EIGEN;
+        //s.dense_linear_algebra_library_type = ceres::EIGEN;
     else
         // std::cout << "2" << endl;
         options.linear_solver_type = ceres::DENSE_SCHUR;
@@ -1551,6 +1585,13 @@ void Estimator::slideWindowNew()
 {
     sum_of_front++;
     f_manager.removeFront(frame_count);
+    
+    // Shift magnetometer data - remove the newest measurement
+    //print("mag by frame", mag_by_frame)
+    if (!mag_by_frame.empty())
+    {
+        mag_by_frame.pop_back();
+    }
 }
 
 void Estimator::slideWindowOld()
@@ -1570,6 +1611,12 @@ void Estimator::slideWindowOld()
     }
     else
         f_manager.removeBack();
+    
+    // Shift magnetometer data - remove the oldest measurement and shift everything down
+    if (!mag_by_frame.empty())
+    {
+        mag_by_frame.erase(mag_by_frame.begin());
+    }
 }
 
 

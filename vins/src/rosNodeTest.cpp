@@ -20,6 +20,7 @@
 #include "estimator/estimator.h"
 #include "estimator/parameters.h"
 #include "utility/visualization.h"
+#include <sensor_msgs/msg/magnetic_field.hpp>
 
 Estimator estimator;
 
@@ -28,6 +29,8 @@ queue<sensor_msgs::msg::PointCloud::ConstPtr> feature_buf;
 queue<sensor_msgs::msg::Image::ConstPtr> img0_buf;
 queue<sensor_msgs::msg::Image::ConstPtr> img1_buf;
 std::mutex m_buf;
+
+queue<sensor_msgs::msg::MagneticField::SharedPtr> mag_buf;
 
 // header: 1403715278
 void img0_callback(const sensor_msgs::msg::Image::SharedPtr img_msg)
@@ -237,15 +240,19 @@ void cam_switch_callback(const std_msgs::msg::Bool::SharedPtr switch_msg)
     return;
 }
 
-void mag_callback(const sensor_msgs::msg::Mag::SharedPtr mag_msg)
+void mag_callback(const sensor_msgs::msg::MagneticField::SharedPtr mag_msg)
+//void mag_callback(const std_msgs::msg::Float32::SharedPtr mag_msg)
 {
+    //double t = rclcpp::Clock().now().seconds();
     double t = mag_msg->header.stamp.sec + mag_msg->header.stamp.nanosec * (1e-9);
     double mx = mag_msg->magnetic_field.x;
     double my = mag_msg->magnetic_field.y;
     double mz = mag_msg->magnetic_field.z;
+    //cout << "TIME: " << t << endl;
+    //cout << "MEAS: " << mx << " " << my << " " << mz << endl;
 
-    Vector3d mag(mx, my, mz);
-    mag.normalize();
+    Eigen::Vector3d mag(mx, my, mz);
+    //mag.normalize();
     estimator.inputMag(t, mag);
     return;
 }
@@ -303,7 +310,7 @@ int main(int argc, char **argv)
     //{
     //    sub_mag = n->create_subscription<sensor_msgs::msg::Mag>(MAG_TOPIC, rclcpp::QoS(rclcpp::KeepLast(2000)), mag_callback);
     //}
-    auto sub_mag = n->create_subscription<sensor_msgs::msg::Mag>(MAG_TOPIC, rclcpp::QoS(rclcpp::KeepLast(2000)), mag_callback);
+    auto sub_mag = n->create_subscription<sensor_msgs::msg::MagneticField>(MAG_TOPIC, rclcpp::QoS(rclcpp::KeepLast(2000)), mag_callback);
 
     std::thread sync_thread{sync_process};
     rclcpp::spin(n);
