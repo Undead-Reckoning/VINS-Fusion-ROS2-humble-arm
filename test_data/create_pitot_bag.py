@@ -1,38 +1,45 @@
 #!/usr/bin/env python3
 """
-Script to copy a ROS2 bag and add spoofed barometer data.
-This is a replacement for the buggy MATLAB ros2bagwriter.
+Script to copy a ROS2 bag and add pitot tube airspeed data.
+Generates airspeed from ground truth velocity with optional wind model.
 """
 
 import sys
 import os
 from pathlib import Path
+import numpy as np
 
 try:
     from rosbag2_py import SequentialReader, SequentialWriter
     from rosbag2_py import StorageOptions, ConverterOptions, TopicMetadata
     from rclpy.serialization import deserialize_message, serialize_message
     from rosidl_runtime_py.utilities import get_message
-    from std_msgs.msg import Float32
+    from geometry_msgs.msg import TwistStamped
+    from nav_msgs.msg import Odometry
 except ImportError as e:
     print(f"Error: Missing required Python packages.")
     print(f"Please install: pip install rosbag2-py rclpy")
     print(f"Error details: {e}")
     sys.exit(1)
 
-def copy_bag_with_baro(input_bag_path, output_bag_path, baro_frequency=20.0, duration_seconds=None, skip_topics=None):
+def copy_bag_with_pitot(input_bag_path, output_bag_path, 
+                        velocity_topic='/mavros/local_position/odom',
+                        wind_velocity=(0.0, 0.0, 0.0),
+                        add_noise=True,
+                        noise_std=0.1,
+                        duration_seconds=None):
     """
-    Copy a ROS2 bag and add barometer data.
+    Copy a ROS2 bag and add pitot tube airspeed data.
     
     Args:
         input_bag_path: Path to input bag directory
         output_bag_path: Path to output bag directory
-        baro_frequency: Barometer sampling frequency in Hz
-        duration_seconds: Maximum duration to copy in seconds (None = copy entire bag)
-        skip_topics: List of topics to skip (default: None - don't skip any topics)
+        velocity_topic: Topic containing velocity data (Odometry or TwistStamped)
+        wind_velocity: Tuple (x, y, z) of wind in NED frame [m/s]
+        add_noise: Whether to add Gaussian noise to airspeed
+        noise_std: Standard deviation of noise in m/s
+        duration_seconds: Maximum duration to copy in seconds (None = entire bag)
     """
-    if skip_topics is None:
-        skip_topics = []
     
     # Setup reader
     print(f"Opening input bag: {input_bag_path}")
@@ -60,36 +67,39 @@ def copy_bag_with_baro(input_bag_path, output_bag_path, baro_frequency=20.0, dur
     writer = SequentialWriter()
     writer.open(writer_storage, writer_converter)
     
-    # Get all topics and create them in the writer (except skipped ones)
+    # Get all topics and create them in the writer
     topic_types = reader.get_all_topics_and_types()
+    type_map = {t.name: t.type for t in topic_types}
     topic_counts = {}
     
     print(f"\nCopying topics:")
-    if skip_topics:
-        print(f"  (Skipping: {skip_topics})")
     for topic_metadata in topic_types:
-        if topic_metadata.name not in skip_topics:
-            writer.create_topic(topic_metadata)
-            topic_counts[topic_metadata.name] = 0
-            print(f"  - {topic_metadata.name} ({topic_metadata.type})")
-        else:
-            print(f"  - {topic_metadata.name} (SKIPPED)")
+        writer.create_topic(topic_metadata)
+        topic_counts[topic_metadata.name] = 0
+        print(f"  - {topic_metadata.name} ({topic_metadata.type})")
     
-    # Add barometer topic
-    baro_topic = TopicMetadata(
-        name='/baro',
-        type='std_msgs/msg/Float32',
+    # Check if velocity topic exists
+    if velocity_topic not in type_map:
+        print(f"\n✗ ERROR: Velocity topic '{velocity_topic}' not found in bag!")
+        print(f"Available topics: {list(type_map.keys())}")
+        sys.exit(1)
+    
+    # Add pitot topic
+    pitot_topic = TopicMetadata(
+        name='/pitot/airspeed',
+        type='geometry_msgs/msg/TwistStamped',
         serialization_format='cdr'
     )
-    writer.create_topic(baro_topic)
-    print(f"  - /baro (std_msgs/msg/Float32) [NEW]")
+    writer.create_topic(pitot_topic)
+    print(f"  - /pitot/airspeed (geometry_msgs/msg/TwistStamped) [NEW]")
     
-    # Copy all messages
-    print("\nCopying messages...")
+    # Copy all messages and generate pitot data
+    print("\nCopying messages and generating pitot data...")
     start_time = None
-    end_time = None
     cutoff_time = None
     message_count = 0
+    pitot_count = 0
+    wind_vec = np.array(wind_velocity)
     
     while reader.has_next():
         (topic, data, timestamp) = reader.read_next()
@@ -100,55 +110,91 @@ def copy_bag_with_baro(input_bag_path, output_bag_path, baro_frequency=20.0, dur
                 cutoff_time = start_time + int(duration_seconds * 1e9)
                 print(f"  Limiting to {duration_seconds} seconds from start")
         
-        # Check if we've exceeded the duration limit
+        # Check duration limit
         if cutoff_time is not None and timestamp > cutoff_time:
             print(f"  Reached duration limit of {duration_seconds} seconds")
             break
         
-        end_time = timestamp
+        # Write original message
+        writer.write(topic, data, timestamp)
+        topic_counts[topic] = topic_counts.get(topic, 0) + 1
+        message_count += 1
         
-        if topic not in skip_topics:
-            writer.write(topic, data, timestamp)
-            topic_counts[topic] = topic_counts.get(topic, 0) + 1
-            message_count += 1
+        # Generate pitot data from velocity topic
+        if topic == velocity_topic:
+            msg_type = get_message(type_map[topic])
+            vel_msg = deserialize_message(data, msg_type)
             
-            if message_count % 1000 == 0:
-                elapsed = (timestamp - start_time) / 1e9
-                print(f"  Copied {message_count} messages... ({elapsed:.1f}s)")
+            # Extract velocity (works for both Odometry and TwistStamped)
+            if hasattr(vel_msg, 'twist'):
+                if hasattr(vel_msg.twist, 'twist'):  # Odometry
+                    vx = vel_msg.twist.twist.linear.x
+                    vy = vel_msg.twist.twist.linear.y
+                    vz = vel_msg.twist.twist.linear.z
+                    header = vel_msg.header
+                else:  # TwistStamped
+                    vx = vel_msg.twist.linear.x
+                    vy = vel_msg.twist.linear.y
+                    vz = vel_msg.twist.linear.z
+                    header = vel_msg.header
+            else:
+                continue
+            
+            # Calculate airspeed: ground_velocity - wind_velocity
+            # Simplified: assume velocity is already in body frame or NED
+            air_velocity = np.array([vx, vy, vz]) - wind_vec
+            
+            # Pitot measures forward airspeed (x-component in body frame)
+            airspeed = air_velocity[0]
+            
+            # Add noise if requested
+            if add_noise:
+                airspeed += np.random.normal(0, noise_std)
+            
+            # Pitot can't measure negative (it measures dynamic pressure)
+            airspeed = max(0.0, airspeed)
+            
+            # Create pitot message
+            pitot_msg = TwistStamped()
+            pitot_msg.header.stamp = header.stamp
+            pitot_msg.header.frame_id = "body"
+            pitot_msg.twist.linear.x = airspeed
+            pitot_msg.twist.linear.y = 0.0
+            pitot_msg.twist.linear.z = 0.0
+            pitot_msg.twist.angular.x = 0.0
+            pitot_msg.twist.angular.y = 0.0
+            pitot_msg.twist.angular.z = 0.0
+            
+            # Write pitot message
+            writer.write('/pitot/airspeed', serialize_message(pitot_msg), timestamp)
+            pitot_count += 1
+        
+        if message_count % 1000 == 0:
+            elapsed = (timestamp - start_time) / 1e9
+            print(f"  Copied {message_count} messages ({pitot_count} pitot)... ({elapsed:.1f}s)")
     
     print(f"\nCopied {message_count} total messages")
+    print(f"Generated {pitot_count} pitot measurements")
     print("\nMessage counts by topic:")
     for topic, count in sorted(topic_counts.items()):
         print(f"  {topic}: {count}")
-    
-    # Add barometer messages
-    print(f"\nAdding barometer data at {baro_frequency} Hz...")
-    duration_s = (end_time - start_time) / 1e9
-    num_baro_samples = int(duration_s * baro_frequency)
-    
-    baro_msg = Float32()
-    baro_msg.data = 0.0
-    
-    for i in range(num_baro_samples):
-        timestamp = start_time + int((i / baro_frequency) * 1e9)
-        writer.write('/baro', serialize_message(baro_msg), timestamp)
-    
-    print(f"Added {num_baro_samples} barometer messages (constant height = 0.0 m)")
     
     # Cleanup
     print("\nFinalizing bag...")
     del writer
     del reader
     
+    duration_s = (timestamp - start_time) / 1e9
     print(f"\n✓ Successfully created: {output_bag_path}")
     print(f"  Duration: {duration_s:.2f} seconds")
-    print(f"  Total topics: {len(topic_counts) + 1} (including /baro)")
+    print(f"  Wind: ({wind_velocity[0]:.1f}, {wind_velocity[1]:.1f}, {wind_velocity[2]:.1f}) m/s")
+    print(f"  Noise: {'Enabled' if add_noise else 'Disabled'} (std={noise_std} m/s)")
 
 
-def validate_bag(bag_path):
-    """Print info about a bag file."""
+def list_topics(bag_path):
+    """List all topics in a bag file."""
     print(f"\n{'='*60}")
-    print(f"Validating bag: {bag_path}")
+    print(f"Topics in bag: {bag_path}")
     print(f"{'='*60}")
     
     try:
@@ -161,85 +207,77 @@ def validate_bag(bag_path):
         reader = SequentialReader()
         reader.open(storage, converter)
         
-        # Get metadata
-        metadata = reader.get_metadata()
         topic_types = reader.get_all_topics_and_types()
         
-        print(f"\nBag info:")
-        print(f"  Duration: {metadata.duration.nanoseconds / 1e9:.2f} seconds")
-        print(f"  Start time: {metadata.starting_time.nanoseconds / 1e9:.2f}")
-        print(f"  Message count: {metadata.message_count}")
-        
-        print(f"\nTopics:")
+        print(f"\nFound {len(topic_types)} topics:")
         for topic in topic_types:
             print(f"  {topic.name}")
             print(f"    Type: {topic.type}")
         
-        # Count messages per topic
-        topic_counts = {}
-        while reader.has_next():
-            (topic, data, timestamp) = reader.read_next()
-            topic_counts[topic] = topic_counts.get(topic, 0) + 1
-        
-        print(f"\nMessage counts:")
-        for topic, count in sorted(topic_counts.items()):
-            print(f"  {topic}: {count}")
-        
         del reader
-        print(f"\n✓ Bag is valid")
-        return True
+        return [t.name for t in topic_types]
         
     except Exception as e:
-        print(f"\n✗ Error validating bag: {e}")
-        return False
+        print(f"\n✗ Error reading bag: {e}")
+        return []
 
 
 if __name__ == '__main__':
     # Configuration
     INPUT_BAG = "test_data/V1_01_easy"
-    OUTPUT_BAG = "test_data/Test_Baro_Zeros_10s"
-    BARO_FREQUENCY = 20.0  # Hz
-    DURATION_SECONDS = 10  # None = entire bag, or set to e.g. 30.0 for 30 seconds
-    SKIP_TOPICS = []  # Empty list = don't skip any topics. Example: ['/fcu/motor_speed', '/some/topic']
+    OUTPUT_BAG = "test_data/V1_01_easy_with_pitot"
     
-    # You can also pass arguments from command line
+    # Which topic has velocity? Common options:
+    # - '/mavros/local_position/odom' (PX4/MAVROS)
+    # - '/ground_truth/odometry' (simulation)
+    # - '/vins_estimator/odometry' (VINS output)
+    VELOCITY_TOPIC = '/mavros/local_position/odom'
+    
+    # Wind settings (NED frame: North, East, Down in m/s)
+    WIND_VELOCITY = (0.0, 0.0, 0.0)  # No wind
+    # WIND_VELOCITY = (3.0, -2.0, 0.0)  # 3 m/s North, 2 m/s West
+    
+    # Noise settings
+    ADD_NOISE = True
+    NOISE_STD = 0.1  # Standard deviation in m/s
+    
+    # Duration limit
+    DURATION_SECONDS = None  # None = entire bag
+    
+    # Command line arguments
     if len(sys.argv) > 1:
+        if sys.argv[1] == '--list-topics':
+            if len(sys.argv) > 2:
+                list_topics(sys.argv[2])
+            else:
+                list_topics(INPUT_BAG)
+            sys.exit(0)
         INPUT_BAG = sys.argv[1]
     if len(sys.argv) > 2:
         OUTPUT_BAG = sys.argv[2]
-    if len(sys.argv) > 3:
-        BARO_FREQUENCY = float(sys.argv[3])
-    if len(sys.argv) > 4:
-        DURATION_SECONDS = float(sys.argv[4])
     
     print("="*60)
-    print("ROS2 Bag Copy with Barometer Data")
+    print("ROS2 Bag Copy with Pitot Tube Data")
     print("="*60)
     print(f"Input:  {INPUT_BAG}")
     print(f"Output: {OUTPUT_BAG}")
-    print(f"Baro frequency: {BARO_FREQUENCY} Hz")
-    if DURATION_SECONDS is not None:
+    print(f"Velocity topic: {VELOCITY_TOPIC}")
+    print(f"Wind: ({WIND_VELOCITY[0]:.1f}, {WIND_VELOCITY[1]:.1f}, {WIND_VELOCITY[2]:.1f}) m/s")
+    print(f"Noise: {'Enabled' if ADD_NOISE else 'Disabled'} (std={NOISE_STD} m/s)")
+    if DURATION_SECONDS:
         print(f"Duration limit: {DURATION_SECONDS} seconds")
-    else:
-        print(f"Duration limit: None (entire bag)")
-    if SKIP_TOPICS:
-        print(f"Skipping topics: {SKIP_TOPICS}")
-    else:
-        print(f"Skipping topics: None (all topics copied)")
     print("="*60)
     
     try:
-        # Copy bag and add barometer data
-        copy_bag_with_baro(
+        copy_bag_with_pitot(
             input_bag_path=INPUT_BAG,
             output_bag_path=OUTPUT_BAG,
-            baro_frequency=BARO_FREQUENCY,
-            duration_seconds=DURATION_SECONDS,
-            skip_topics=SKIP_TOPICS
+            velocity_topic=VELOCITY_TOPIC,
+            wind_velocity=WIND_VELOCITY,
+            add_noise=ADD_NOISE,
+            noise_std=NOISE_STD,
+            duration_seconds=DURATION_SECONDS
         )
-        
-        # Validate the output
-        validate_bag(OUTPUT_BAG)
         
     except Exception as e:
         print(f"\n✗ Error: {e}")
