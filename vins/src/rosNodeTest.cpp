@@ -32,7 +32,7 @@ queue<sensor_msgs::msg::Image::ConstPtr> img1_buf;
 std::mutex m_buf;
 
 // Pitot tube callback - receives vx measurements
-void pitot_callback(const std_msgs::msg::TwistStamped::SharedPtr pitot_msg)
+void pitot_callback(const geometry_msgs::msg::TwistStamped::SharedPtr pitot_msg)
 {
     if (!USE_PITOT)
         return;
@@ -311,10 +311,10 @@ int main(int argc, char **argv)
     }
 
     // Subscribe to pitot tube
-    rclcpp::Subscription<geometry_msgs::msg::TwistStamped::SharedPtr> pitot_sub;
+    rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr pitot_sub = nullptr;
     if (USE_PITOT)
     {
-        pitot_sub = n->create_subscription<geometry_msgs::msg::TwistStamped::SharedPtr>(
+        pitot_sub = n->create_subscription<geometry_msgs::msg::TwistStamped>(
             PITOT_TUBE_TOPIC,  // Uses the variable from parameters
             100,
             pitot_callback
