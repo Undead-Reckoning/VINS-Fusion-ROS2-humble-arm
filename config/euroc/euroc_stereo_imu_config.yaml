@@ -8,7 +8,7 @@ num_of_cam: 2
 imu_topic: "/imu0"
 image0_topic: "/cam0/image_raw"
 image1_topic: "/cam1/image_raw"
-output_path: "/home/jacob/VINS-Fusion-ROS2-humble-arm/test_data/Test_Baro_Truth_Results"
+output_path: "/home/myles/baro_test_output/"
 baro_topic: "/baro"
 
 cam0_calib: "cam0_mei.yaml"
@@ -68,7 +68,7 @@ gyr_w: 0.0001       # gyroscope bias random work noise standard deviation.
 g_norm: 9.81007     # gravity magnitude
 
 #barometer parameters
-baro_n: 0.1         # barometer measurement noise standard deviation, in meters
+baro_n: 0.001         # barometer measurement noise standard deviation, in meters
 
 #unsynchronization parameters
 estimate_td: 0                      # online estimate time offset between camera and imu

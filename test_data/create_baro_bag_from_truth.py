@@ -10,6 +10,7 @@ from pathlib import Path
 import csv
 import numpy as np
 import rclpy
+import matplotlib.pyplot as plt
 
 try:
     from rosbag2_py import SequentialReader, SequentialWriter
@@ -71,6 +72,19 @@ def create_baro_bag_from_truth(input_bag_path, output_bag_path, truth_csv_path,
     if not height_map:
         print("ERROR: Could not load ground truth heights!")
         sys.exit(1)
+    
+    # Prepare truth data for plotting
+    initial_height = height_map[min(height_map.keys())] if height_map else 0
+    truth_times = sorted(height_map.keys())
+    truth_heights = [height_map[t] - initial_height for t in truth_times]
+    
+    # Save truth height to CSV
+    with open('ref_truth_height.csv', 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['time_ns', 'height_m'])
+        for t, h in zip(truth_times, truth_heights):
+            writer.writerow([t, h])
+    print("Saved reference truth height to ref_truth_height.csv")
     
     # Setup reader
     print(f"\nOpening input bag: {input_bag_path}")
@@ -171,6 +185,9 @@ def create_baro_bag_from_truth(input_bag_path, output_bag_path, truth_csv_path,
     
     heights_used = []
     
+    baro_times = []
+    baro_heights = []
+    
     for i in range(num_baro_samples):
         timestamp = start_time + int((i / baro_frequency) * 1e9)
         
@@ -186,14 +203,18 @@ def create_baro_bag_from_truth(input_bag_path, output_bag_path, truth_csv_path,
                 baro_interpolated += 1
             else:
                 # No ground truth available at this time
-                height = 0.0
+                height = float('nan')
                 baro_not_found += 1
+        
+        height -= initial_height
         
         # Add noise if requested
         if baro_noise_std > 0:
             height += np.random.normal(0, baro_noise_std)
         
         heights_used.append(height)
+        baro_times.append(timestamp)
+        baro_heights.append(height)
         
         # Create and write barometer message
         header = Header()
@@ -220,6 +241,17 @@ def create_baro_bag_from_truth(input_bag_path, output_bag_path, truth_csv_path,
     print(f"  Height range: {np.min(heights_used):.4f} to {np.max(heights_used):.4f} m")
     print(f"  Height mean:  {np.mean(heights_used):.4f} m")
     print(f"  Height std:   {np.std(heights_used):.4f} m")
+    
+    # Generate plot
+    plt.figure(figsize=(10, 6))
+    plt.plot([t / 1e9 for t in truth_times], truth_heights, label='Truth Height', color='blue')
+    plt.plot([t / 1e9 for t in baro_times], baro_heights, label='Barometer Height', color='red', linestyle='--')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Height (m)')
+    plt.title('Height vs Time: Truth vs Barometer')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
     
     print(f"\n✓ Successfully created: {output_bag_path}")
     print(f"  Duration: {duration_s:.2f} seconds")

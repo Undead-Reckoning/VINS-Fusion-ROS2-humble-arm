@@ -98,6 +98,8 @@ void Estimator::clearState()
     failure_occur = 0;
 
     mProcess.unlock();
+
+    baro_z_by_frame.clear();
 }
 
 void Estimator::setParameter()
@@ -351,7 +353,6 @@ void Estimator::processMeasurements()
             // Baro Addition
             // Handle barometer measurements for this frame: assign altitude (meters) to baro_z_by_frame[frame_count]
             mBuf.lock();
-            printf("[BARO PROCESS] Frame %d, prevTime: %.6f, curTime: %.6f\n", frame_count, prevTime, curTime);
             // ensure vector size
             if (baro_z_by_frame.size() < static_cast<size_t>(frame_count + 1))
                 baro_z_by_frame.resize(frame_count + 1, std::numeric_limits<double>::quiet_NaN());
@@ -1159,8 +1160,8 @@ void Estimator::optimization()
     // Only add if BARO_N > 0 (barometer is enabled) and measurement is valid (finite).
     if (BARO_N > 0)
     {
-        printf("[BARO OPTIM] BARO_N enabled: %.3f. Processing %d frames\n", BARO_N, frame_count + 1);
-        for (int i = 0; i < frame_count + 1; ++i)
+        printf("[BARO OPTIM] BARO_N enabled: %.3f. Processing %d frames\n", BARO_N, frame_count);
+        for (int i = 0; i < frame_count + 1; i++)
         {
             if (i >= static_cast<int>(baro_z_by_frame.size()))
                 break;
@@ -1169,6 +1170,7 @@ void Estimator::optimization()
             if (std::isfinite(z))
             {
                 printf("[BARO FACTOR ADD] Frame %d: Adding BarometerFactor with z=%.3f m, sigma=%.3f m\n", i, z, BARO_N);
+                printf("[BARO FACTOR INFO] baro_z_by_frame[].size() = %lu, baro_z_by_frame[%d] = %.3f\n", baro_z_by_frame.size(), i, z);
                 ROS_DEBUG("Frame %d: Adding BarometerFactor with z=%.3f m", i, z);
                 BarometerFactor *baro = new BarometerFactor(z, BARO_N);
                 problem.AddResidualBlock(baro, NULL, para_Pose[i]);
@@ -1532,7 +1534,17 @@ void Estimator::slideWindow()
                 it_0->second.pre_integration = nullptr;
                 all_image_frame.erase(all_image_frame.begin(), it_0);
             }
+
             slideWindowOld();
+        }
+
+        //Shifting baro_z_by_frame
+        if (baro_z_by_frame.size() > 0)
+        {
+            for (int i = 0; i < WINDOW_SIZE; i++)
+            {
+                baro_z_by_frame[i] = baro_z_by_frame[i + 1];
+            }
         }
     }
     else
@@ -1571,6 +1583,12 @@ void Estimator::slideWindow()
                 angular_velocity_buf[WINDOW_SIZE].clear();
             }
             slideWindowNew();
+        }
+
+        if (static_cast<int>(baro_z_by_frame.size()) > frame_count)
+        {
+            baro_z_by_frame[frame_count - 1] = baro_z_by_frame[frame_count];
+            baro_z_by_frame[frame_count] = std::numeric_limits<double>::quiet_NaN();
         }
     }
 }
