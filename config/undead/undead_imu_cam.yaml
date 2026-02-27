@@ -7,7 +7,7 @@ num_of_cam: 1
 
 imu_topic: "/imu0"
 image0_topic: "/cam"
-output_path: "/home/r2d2/vins_ws/output"
+output_path: "/home/r2d2/vins_ws/test/handheld/"
 
 cam0_calib: "undead_cam.yaml"
 image_width: 1600
@@ -37,7 +37,7 @@ body_T_cam0: !!opencv-matrix
 
 
 #Multiple thread support
-multiple_thread: 6
+multiple_thread: 1
 
 #feature traker paprameters
 max_cnt: 150            # max feature number in feature tracking
@@ -59,6 +59,13 @@ acc_w: 3.8205e-7        # accelerometer bias random work noise standard deviatio
 gyr_w: 1.1811e-4       # gyroscope bias random work noise standard deviation.     
 g_norm: 9.7956     # gravity magnitude
 
+#base imu parameters
+#acc_n: 0.1          # accelerometer measurement noise standard deviation. 
+#gyr_n: 0.01         # gyroscope measurement noise standard deviation.     
+#acc_w: 0.001        # accelerometer bias random work noise standard deviation.  
+#gyr_w: 0.0001       # gyroscope bias random work noise standard deviation.     
+#g_norm: 9.7956     # gravity magnitude
+
 # INTERNAL IMU
 #g_norm: 9.8107     # gravity magnitude
 #acc_n: 0.046          # accelerometer measurement noise standard deviation. 
@@ -68,7 +75,7 @@ g_norm: 9.7956     # gravity magnitude
 #g_norm: 9.7956 
 
 #unsynchronization parameters
-estimate_td: 0                      # online estimate time offset between camera and imu
+estimate_td: 1                      # online estimate time offset between camera and imu
 td: 0.0                             # initial value of time offset. unit: s. readed image clock + td = real image clock (IMU clock)
 
 #loop closure parameters

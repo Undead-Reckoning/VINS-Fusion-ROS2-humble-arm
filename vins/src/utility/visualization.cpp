@@ -178,7 +178,19 @@ void pubOdometry(const Estimator &estimator, const std_msgs::msg::Header &header
               << tmp_Q.z() << ","
               << estimator.Vs[WINDOW_SIZE].x() << ","
               << estimator.Vs[WINDOW_SIZE].y() << ","
-              << estimator.Vs[WINDOW_SIZE].z() << "," << endl;
+              << estimator.Vs[WINDOW_SIZE].z();
+        // append biases if IMU is used, otherwise write zeros
+        if (USE_IMU) {
+            foutC << "," << estimator.Bas[WINDOW_SIZE].x()
+                  << "," << estimator.Bas[WINDOW_SIZE].y()
+                  << "," << estimator.Bas[WINDOW_SIZE].z()
+                  << "," << estimator.Bgs[WINDOW_SIZE].x()
+                  << "," << estimator.Bgs[WINDOW_SIZE].y()
+                  << "," << estimator.Bgs[WINDOW_SIZE].z();
+        } else {
+            foutC << ",0,0,0,0,0,0";
+        }
+        foutC << "," << endl;
         foutC.close();
         Eigen::Vector3d tmp_T = estimator.Ps[WINDOW_SIZE];
         printf("time: %f, t: %f %f %f q: %f %f %f %f \n", header.stamp.sec + header.stamp.nanosec * (1e-9),
