@@ -126,6 +126,9 @@ class Estimator
     Matrix3d        Rs[(WINDOW_SIZE + 1)];
     Vector3d        Bas[(WINDOW_SIZE + 1)];
     Vector3d        Bgs[(WINDOW_SIZE + 1)];
+    Matrix3d        R_ENU;
+    Matrix3d        R_mag_field;
+    Matrix3d        R_NED;
     double td;
 
     Matrix3d back_R0, last_R, last_R0;
@@ -155,6 +158,7 @@ class Estimator
     vector<Vector3d> margin_cloud;
     vector<Vector3d> key_poses;
     double initial_timestamp;
+    bool mag_initial;
 
 
     double para_Pose[WINDOW_SIZE + 1][SIZE_POSE];

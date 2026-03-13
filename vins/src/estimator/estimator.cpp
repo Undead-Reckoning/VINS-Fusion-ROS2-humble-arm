@@ -9,8 +9,10 @@
 
 #include "estimator.h"
 #include "../utility/visualization.h"
+#include <std_msgs/msg/float32_multi_array.hpp>
 #include <fstream>
 #include <iostream>
+#include <cmath>
 
 Estimator::Estimator(): f_manager{Rs}
 {
@@ -77,6 +79,7 @@ void Estimator::clearState()
     frame_count = 0;
     solver_flag = INITIAL;
     initial_timestamp = 0;
+    mag_initial = true;
     all_image_frame.clear();
     //gps_avail= false,
 
@@ -370,18 +373,59 @@ void Estimator::processMeasurements()
             //cout << "magBuf" << magBuf.empty() << endl;
             if (!magBuf.empty() && magBuf.front().first <= curTime)
             {
-                //cout << "if empty" << endl;
                 mag_by_frame[frame_count] = magBuf.front().second;
                 magBuf.pop();
             }
             else
             {
-                //cout << "else" << endl;
                 mag_by_frame[frame_count].setConstant(
                     std::numeric_limits<double>::quiet_NaN());
             }
 
             mBuf.unlock();
+            //mag addition end
+
+            //mag addition - call function to initialize world frame rotation
+            //Run upon first real magnetometer measurement
+            if (mag_initial && !isnan(mag_by_frame[frame_count][0])) {
+                //Get to magnetic field aligned
+                Vector3d mag_body = mag_by_frame[frame_count].normalized(); //mag in body frames
+                Vector3d mag_VINS_wf = Rs[0] * mag_body; //mag from body to VINS world frame
+
+                double yaw = atan2(mag_VINS_wf[0],mag_VINS_wf[1]); //yaw between VINS world frame to magnetic aligned (0,1,0)
+                //cout << "yaw = " << yaw << endl;
+
+                R_mag_field = Utility::ypr2R(Eigen::Vector3d{yaw*180/M_PI,0.0,0.0}); //from VINS frame to mag aligned
+                double dec_yaw = 7.88; //Declination offset of mag N to true N (deg)
+                Matrix3d R_magtoENU = Utility::ypr2R(Eigen::Vector3d{dec_yaw,0.0,0.0});
+                R_ENU = R_magtoENU * R_mag_field;
+                //Vector3d R_ypr = Utility::R2ypr(R_ENU);
+
+                //From ENU to NED -> 90deg yaw, 180deg roll
+                Matrix3d R_NED_ENU = Utility::ypr2R(Eigen::Vector3d{90,0,180});
+                R_NED = R_NED_ENU * R_ENU;
+
+                // broadcast the NED rotation matrix on its own topic instead of subscribing to it
+                // the topic name is configured via R_NED_TOPIC parameter
+                {
+                    std_msgs::msg::Float32MultiArray msg;
+                    // 3x3 matrix, row‑major
+                    msg.layout.dim.resize(2);
+                    msg.layout.dim[0].label  = "rows";
+                    msg.layout.dim[0].size   = 3;
+                    msg.layout.dim[0].stride = 9;
+                    msg.layout.dim[1].label  = "cols";
+                    msg.layout.dim[1].size   = 3;
+                    msg.layout.dim[1].stride = 3;
+                    for (int r = 0; r < 3; ++r)
+                        for (int c = 0; c < 3; ++c)
+                            msg.data.push_back(static_cast<float>(R_NED(r, c)));
+
+                    pubR_NED(msg);
+                }
+
+                mag_initial = false;
+            }
             //mag addition end
 
             // cout << "4" << endl;
@@ -574,10 +618,11 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
         }
 
         // stereo + IMU initilization
-        if(STEREO && USE_IMU)
+        if(STEREO && USE_IMU) //This is actually what is being chosen
         {
             f_manager.initFramePoseByPnP(frame_count, Ps, Rs, tic, ric);
             f_manager.triangulate(frame_count, Ps, Rs, tic, ric);
+            //cout << "STEREO AND IMU" << endl;
             if (frame_count == WINDOW_SIZE)
             {
                 map<double, ImageFrame>::iterator frame_it;
@@ -588,6 +633,47 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
                     frame_it->second.T = Ps[i];
                     i++;
                 }
+                //mag addition
+                //Vector3d mag_body = mag_by_frame[0].normalized(); //initial mag meas in body drame
+                //cout << "MAG BODY " << mag_body << endl;
+                //Vector3d mag_world = Rs[0] * mag_body; //Rotate to VINS WF
+
+                //Vector3d mag_world_enu = MAG_WORLD_FIELD.normalized(); //This is the actual mag field in ENU. In the future, take true ENU (0,1,0) and apply hardcoded mag field declination to get mag ENU.
+                //Vector3d real_world_enu = {0,-1,0};
+                //double magnetic_yaw = atan2(-mag_world_enu[0], mag_world_enu[1]);
+                //Matrix3d R_yaw_mag = Utility::ypr2R(Eigen::Vector3d{magnetic_yaw,0,0});
+                //for (int j = 0; j <= WINDOW_SIZE; j++) {
+                //    Ps[j] = R_yaw_mag * Ps[j];
+                //    Rs[j] = R_yaw_mag * Rs[j];
+                //    Vs[j] = R_yaw_mag * Vs[j];
+                //}
+                //i = 0;
+                //for (frame_it = all_image_frame.begin(); frame_it != all_image_frame.end(); frame_it++) {
+                //    frame_it -> second.R = Rs[i];
+                //    frame_it -> second.T = Ps[i];
+                //    i++;
+                //}
+
+                //take 2
+                //Get to magnetic field aligned
+                //double yaw = acos(mag_body[1]); //radians
+                //double pitch = acos(mag_body[0]/sin(yaw));
+                //Matrix3d R_mag_field = Utility::ypr2R(Eigen::Vector3d{yaw,pitch,0}); //from body frame to mag aligned (0;1;0)
+                //double dec_yaw = 7.88 / 180 * 2 * acos(0.0); //Declination offset of N to mag N (deg to rad)
+                //Matrix3d R_magtoENU = Utility::ypr2R(Eigen::Vector3d{dec_yaw,0,0});
+                //Matrix3d R_ENU = R_magtoENU * R_mag_field;
+                //for (int j = 0; j <= WINDOW_SIZE; j++) {
+                //    Ps[j] = R_ENU * Ps[j];
+                //    Rs[j] = R_ENU * Rs[j];
+                //    Vs[j] = R_ENU * Vs[j];
+                //}
+                //i = 0;
+                //for (frame_it = all_image_frame.begin(); frame_it != all_image_frame.end(); frame_it++) {
+                //    frame_it -> second.R = Rs[i];
+                //    frame_it -> second.T = Ps[i];
+                //}
+                //end of addition
+
                 solveGyroscopeBias(all_image_frame, Bgs);
                 for (int i = 0; i <= WINDOW_SIZE; i++)
                 {
@@ -679,6 +765,7 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
 bool Estimator::initialStructure()
 {
     TicToc t_sfm;
+    //cout << "FUNCTION CALLED AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" << endl;
     //check imu observibility
     {
         map<double, ImageFrame>::iterator frame_it;
@@ -870,7 +957,13 @@ bool Estimator::visualInitialAlign()
     
     //declaring GPS north alignment
     //uncommented
+    //cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" << endl;
+    //cout << "R0 before = " << R0 << endl;
+    //cout << "yaw = " << yaw << endl;
+    //cout << "Rs[0] = " << Rs[0] << endl;
+
     R0 = Utility::ypr2R(Eigen::Vector3d{-yaw, 0, 0}) * R0; //Yaw is zeroed with W yaw align to B yaw
+    //cout << "R0 after = " << R0 << endl;
     //R0 = Utility::ypr2R(Eigen::Vector3d{gps_yaw, 0, 0}) * R0;  // GPS yaw instead
     //R0 rotates the world frame wrt yaw to make current ac heading new reference
     //Ex. if A/C starts at Xdeg from GPS north, the R0 will define the body frame as zero yaw, Xdeg rotation from world frame. Any deviation from this heading yaw will result in a R0 yaw of non-zero.
@@ -879,6 +972,7 @@ bool Estimator::visualInitialAlign()
     //double yaw_err = 45 * 0.0174532925;
     //Matrix3d R_err = Utility::ypr2R(Eigen::Vector3d(-yaw_err,0,0));
     //R0 = R_err * R0;
+
     //End of testing
 
     g = R0 * g;
@@ -1188,7 +1282,7 @@ void Estimator::optimization()
         Eigen::Vector3d magneticField = mag_by_frame[i];
         //cout << "magneticField " << mag_by_frame[i] << endl;
         if (magneticField.allFinite()){
-            MagnetometerFactor* mag_factor = new MagnetometerFactor(magneticField[0], magneticField[1], magneticField[2], MAG_N);
+            MagnetometerFactor* mag_factor = new MagnetometerFactor(magneticField[0], magneticField[1], magneticField[2], MAG_N, R_mag_field);
 
             //std::ofstream measfile("/tmp/TESTING_MEAS_V1.csv", std::ios::app);
             //cout << "HERE" << endl;

@@ -9,6 +9,7 @@
 
 #include "visualization.h"
 #include <fstream>
+#include <std_msgs/msg/float32_multi_array.hpp>
 
 // using namespace ros;
 using namespace Eigen;
@@ -25,6 +26,9 @@ rclcpp::Publisher<sensor_msgs::msg::PointCloud>::SharedPtr pub_keyframe_point;
 rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pub_extrinsic;
 
 rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr pub_image_track;
+
+// publisher for the north‑east‑down rotation matrix
+rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr pub_r_ned;
 
 CameraPoseVisualization cameraposevisual(1, 0, 0, 1);
 static double sum_of_path = 0;
@@ -47,11 +51,15 @@ void registerPub(rclcpp::Node::SharedPtr n)
     pub_extrinsic = n->create_publisher<nav_msgs::msg::Odometry>("extrinsic", 1000);
     pub_image_track = n->create_publisher<sensor_msgs::msg::Image>("image_track", 1000);
 
+    // advertise new rotation topic
+    pub_r_ned = n->create_publisher<std_msgs::msg::Float32MultiArray>(R_NED_TOPIC.empty() ? "r_ned" : R_NED_TOPIC, 1000);
+
     cameraposevisual.setScale(0.1);
     cameraposevisual.setLineWidth(0.01);
 }
 
 void pubLatestOdometry(const Eigen::Vector3d &P, const Eigen::Quaterniond &Q, const Eigen::Vector3d &V, double t)
+    // existing code unchanged
 {
     nav_msgs::msg::Odometry odometry;
 
@@ -89,6 +97,12 @@ void pubTrackImage(const cv::Mat &imgTrack, const double t)
     pub_image_track->publish(*imgTrackMsg);
 }
 
+
+void pubR_NED(const std_msgs::msg::Float32MultiArray &msg)
+{
+    if (pub_r_ned)
+        pub_r_ned->publish(msg);
+}
 
 void printStatistics(const Estimator &estimator, double t)
 {
@@ -143,44 +157,42 @@ void pubOdometry(const Estimator &estimator, const std_msgs::msg::Header &header
         odometry.header.frame_id = "world";
         odometry.child_frame_id = "world";
         Quaterniond tmp_Q;
-        tmp_Q = Quaterniond(estimator.Rs[WINDOW_SIZE]);
-        odometry.pose.pose.position.x = estimator.Ps[WINDOW_SIZE].x();
-        odometry.pose.pose.position.y = estimator.Ps[WINDOW_SIZE].y();
-        odometry.pose.pose.position.z = estimator.Ps[WINDOW_SIZE].z();
+        Matrix3d R_ENU = estimator.R_ENU;
+        Vector3d Ps_rot = R_ENU * estimator.Ps[WINDOW_SIZE];
+        tmp_Q = Quaterniond(R_ENU * estimator.Rs[WINDOW_SIZE]);
+        Vector3d Vs_rot = R_ENU * estimator.Vs[WINDOW_SIZE];
+
+        //This makes rviz display in Earth-fixed ENU instead of VINS world
+        odometry.pose.pose.position.x = Ps_rot.x();
+        odometry.pose.pose.position.y = Ps_rot.y();
+        odometry.pose.pose.position.z = Ps_rot.z();
         odometry.pose.pose.orientation.x = tmp_Q.x();
         odometry.pose.pose.orientation.y = tmp_Q.y();
         odometry.pose.pose.orientation.z = tmp_Q.z();
         odometry.pose.pose.orientation.w = tmp_Q.w();
-        odometry.twist.twist.linear.x = estimator.Vs[WINDOW_SIZE].x();
-        odometry.twist.twist.linear.y = estimator.Vs[WINDOW_SIZE].y();
-        odometry.twist.twist.linear.z = estimator.Vs[WINDOW_SIZE].z();
+        odometry.twist.twist.linear.x = Vs_rot.x();
+        odometry.twist.twist.linear.y = Vs_rot.y();
+        odometry.twist.twist.linear.z = Vs_rot.z();        
+        
+        //ORIGINAL rviz structure - uncomment to set in VINS frame
+        //odometry.pose.pose.position.x = estimator.Ps[WINDOW_SIZE].x();
+        //odometry.pose.pose.position.y = estimator.Ps[WINDOW_SIZE].y();
+        //odometry.pose.pose.position.z = estimator.Ps[WINDOW_SIZE].z();
+        //odometry.pose.pose.orientation.x = tmp_Q.x();
+        //odometry.pose.pose.orientation.y = tmp_Q.y();
+        //odometry.pose.pose.orientation.z = tmp_Q.z();
+        //odometry.pose.pose.orientation.w = tmp_Q.w();
+        //odometry.twist.twist.linear.x = estimator.Vs[WINDOW_SIZE].x();
+        //odometry.twist.twist.linear.y = estimator.Vs[WINDOW_SIZE].y();
+        //odometry.twist.twist.linear.z = estimator.Vs[WINDOW_SIZE].z();
+        //cout << "Visualization R_ENU" << R_ENU << endl;
 
         //testing only
-        //std::ofstream testfile("/tmp/TESTING2.csv",std::ios::app);
-        //std::ofstream testfile("/tmp/TESTING_n0d4_1_0d1_s0d28_G_V8.csv",std::ios::app);
-        //if (testfile.is_open()){
-        //    cout << "FILE CREATED" << endl;
-        //}
-        //else {
-        //    cout << "NOPE" << endl;
-        //}
+        //std::ofstream testfile("/tmp/TESTING_WF_Quad_7_on.csv",std::ios::app);
         //testfile << tmp_Q.x() << " " << tmp_Q.y() << " " << tmp_Q.z() << " " << tmp_Q.w() << std::endl;
         //testfile.flush();
         //testfile.close();
 
-        //std::ofstream testfiletime("/tmp/TESTING_time2.csv", std::ios::app);
-        //testfiletime << header.stamp.sec + header.stamp.nanosec * (1e-9) << endl;
-        //testfiletime.flush();
-        //testfiletime.close();
-        
-        //std::ofstream testfile("/tmp/TESTING_1d2_n0d5_0d2_mag_pos_V1.csv",std::ios::app);
-        //std::ofstream testfile2("/tmp/TESTING_1d2_n0d5_0d2_mag_pos_V4.csv",std::ios::app);
-        //testfile2 << estimator.Ps[WINDOW_SIZE].x() << " " << estimator.Ps[WINDOW_SIZE].y() << " " << estimator.Ps[WINDOW_SIZE].z() << std::endl;
-        //testfile2.flush();
-        //testfile2.close();
-
-        //cout << "TESTING" << tmp_Q.x() << endl;
-        //cout << odometry.pose.pose.orientation.x << " " << odometry.pose.pose.orientation.y <<" "<< odometry.pose.pose.orientation.z << endl;
         pub_odometry->publish(odometry);
 
         geometry_msgs::msg::PoseStamped pose_stamped;

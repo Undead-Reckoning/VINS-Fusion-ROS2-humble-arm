@@ -48,6 +48,7 @@ std::string IMAGE0_TOPIC, IMAGE1_TOPIC;
 std::string MAG_TOPIC;
 std::string FISHEYE_MASK;
 std::vector<std::string> CAM_NAMES;
+std::string R_NED_TOPIC;
 int MAX_CNT;
 int MIN_DIST;
 double F_THRESHOLD;
@@ -123,6 +124,14 @@ void readParameters(std::string config_file)
         MAG_TOPIC = "/mag";
     }
     printf("Final MAG_TOPIC: '%s'\n", MAG_TOPIC.c_str());
+
+    // topic for publishing R_NED (rotation from VINS world frame to NED)
+    fsSettings["r_ned_topic"] >> R_NED_TOPIC;
+    if (R_NED_TOPIC.empty())
+    {
+        ROS_WARN("r_ned_topic not set in config, using default '/r_ned'");
+        R_NED_TOPIC = "/r_ned";
+    }
     //Magnetometer read in
     MAG_N = fsSettings["mag_N"];
     printf("MAG_N: %f\n", MAG_N);
