@@ -31,7 +31,7 @@ class BarometerFactor : public ceres::SizedCostFunction<1, 7>
         sigma = 1.0;
       }
       sqrt_info = 1.0 / sigma;
-      printf("[BARO_CTOR] BarometerFactor created: z_meas=%.3f m, sigma=%.3f m, sqrt_info=%.6f\n", z_meas, sigma, sqrt_info);
+      //printf("[BARO_CTOR] BarometerFactor created: z_meas=%.3f m, sigma=%.3f m, sqrt_info=%.6f\n", z_meas, sigma, sqrt_info);
     }
 
     virtual bool Evaluate(double const *const *parameters, double *residuals, double **jacobians) const
@@ -41,7 +41,7 @@ class BarometerFactor : public ceres::SizedCostFunction<1, 7>
 
         // 1D residual: body z minus measured altitude
         residuals[0] = (pz - z_meas) * sqrt_info;
-        printf("[BARO_EVAL] Evaluate: pz=%.3f m, z_meas=%.3f m, residual=%.6f\n", pz, z_meas, residuals[0]);
+        //printf("[BARO_EVAL] Evaluate: pz=%.3f m, z_meas=%.3f m, residual=%.6f\n", pz, z_meas, residuals[0]);
 
         if (jacobians && jacobians[0])
         {
