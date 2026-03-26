@@ -21,8 +21,10 @@
 #include "estimator/parameters.h"
 #include "utility/visualization.h"
 
-// Importing Baro Message
+// Sensor Includes
 #include "baro_msgs/msg/baro_data.hpp"
+#include "std_msgs/msg/float32.hpp"
+#include "sensor_msgs/msg/range.hpp"
 
 Estimator estimator;
 
@@ -255,9 +257,37 @@ int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
 	auto n = rclcpp::Node::make_shared("vins_estimator");
+
+    /*
+        MODIFIED    
+        Undead Reckoning
+        Date: 01/21/26
+        By: Quinn Levinson
+    */
+    auto laser_projector = std::make_shared<LaserDepthProjector>();
+    laser_projector->loadLRFConfig("src/VINS-Fusion-ROS2-humble-arm/config/lrf/lrf_config.yaml");
     // ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info);
 
-    if(argc != 2)
+    auto sub_lrf = n->create_subscription<sensor_msgs::msg::Range>(
+        "/lrf",
+        rclcpp::QoS(rclcpp::KeepLast(200)),
+        std::bind(&LaserDepthProjector::updateRange,
+              laser_projector,
+              std::placeholders::_1)
+    );
+
+    std::bind(&LaserDepthProjector::updateRange,
+          laser_projector,
+          std::placeholders::_1);
+
+    // pass pointer into estimator / feature manager
+    estimator.setLaserProjector(laser_projector);
+
+    /*
+        END MODIFIED
+    */
+
+    if(argc < 2)
     {
         printf("please intput: rosrun vins vins_node [config file] \n"
                "for example: rosrun vins vins_node "
