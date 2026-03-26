@@ -1,0 +1,37 @@
+rosbag2_bagfile_information:
+  compression_format: ''
+  compression_mode: ''
+  duration:
+    nanoseconds: 153782489956
+  message_count: 38967
+  relative_file_paths:
+  - MH_02_easy.db3
+  starting_time:
+    nanoseconds_since_epoch: 1403636856854208384
+  storage_identifier: sqlite3
+  topics_with_message_count:
+  - message_count: 30400
+    topic_metadata:
+      name: /imu0
+      offered_qos_profiles: ''
+      serialization_format: cdr
+      type: sensor_msgs/msg/Imu
+  - message_count: 3040
+    topic_metadata:
+      name: /cam1/image_raw
+      offered_qos_profiles: ''
+      serialization_format: cdr
+      type: sensor_msgs/msg/Image
+  - message_count: 3040
+    topic_metadata:
+      name: /cam0/image_raw
+      offered_qos_profiles: ''
+      serialization_format: cdr
+      type: sensor_msgs/msg/Image
+  - message_count: 2487
+    topic_metadata:
+      name: /leica/position
+      offered_qos_profiles: ''
+      serialization_format: cdr
+      type: geometry_msgs/msg/PointStamped
+  version: 4

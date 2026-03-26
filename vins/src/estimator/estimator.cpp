@@ -9,6 +9,7 @@
 
 #include "estimator.h"
 #include "../utility/visualization.h"
+#include <limits>
 
 Estimator::Estimator(): f_manager{Rs}
 {
@@ -220,6 +221,17 @@ void Estimator::inputIMU(double t, const Vector3d &linearAcceleration, const Vec
     }
 }
 
+void Estimator::inputBaro(double t, double z)
+{
+    //printf("[BARO INPUT] Time: %.6f, Altitude: %.3f m\n", t, z);
+    fflush(stdout);
+    mBuf.lock();
+    baroBuf.push(make_pair(t, z));
+    //printf("[BARO BUFFER] Queue size after push: %lu\n", baroBuf.size());
+    fflush(stdout);
+    mBuf.unlock();
+}
+
 void Estimator::inputFeature(double t, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &featureFrame)
 {
     ROS_ERROR("deprecated at VINS-Fusion");
@@ -337,6 +349,40 @@ void Estimator::processMeasurements()
                     processIMU(accVector[i].first, dt, accVector[i].second, gyrVector[i].second);
                 }
             }
+            
+            // Baro Addition
+            // Handle barometer measurements for this frame: assign altitude (meters) to baro_z_by_frame[frame_count]
+            mBuf.lock();
+            //printf("[BARO PROCESS] Frame %d, prevTime: %.6f, curTime: %.6f\n", frame_count, prevTime, curTime);
+            fflush(stdout);
+            // ensure vector size
+            if (baro_z_by_frame.size() < static_cast<size_t>(frame_count + 1))
+                baro_z_by_frame.resize(frame_count + 1, std::numeric_limits<double>::quiet_NaN());
+
+            // discard old baro measurements (<= prevTime)
+            while (!baroBuf.empty() && baroBuf.front().first <= prevTime)
+            {
+                //printf("[BARO DISCARD] Discarding old baro measurement at time %.6f\n", baroBuf.front().first);
+                fflush(stdout);
+                baroBuf.pop();
+            }
+
+            if (!baroBuf.empty() && baroBuf.front().first <= curTime)
+            {
+                double z = baroBuf.front().second;
+                baroBuf.pop();
+                baro_z_by_frame[frame_count] = z;
+                //printf("[BARO ASSIGNED] Frame %d assigned altitude: %.3f m\n", frame_count, z);
+                fflush(stdout);
+            }
+            else
+            {
+                // no baro measurement for this frame
+                baro_z_by_frame[frame_count] = std::numeric_limits<double>::quiet_NaN();
+                //printf("[BARO NO_MEAS] Frame %d has no valid baro measurement. Queue size: %lu\n", frame_count, baroBuf.size());
+                fflush(stdout);
+            }
+            mBuf.unlock();
             // cout << "4" << endl;
 
             mProcess.lock();
@@ -1115,6 +1161,39 @@ void Estimator::optimization()
         }
     }
 
+    // Add barometer (altitude) residuals for frames that have measurements.
+    // Only add if BARO_N > 0 (barometer is enabled) and measurement is valid (finite).
+    if (BARO_N > 0)
+    {
+        //printf("[BARO OPTIM] BARO_N enabled: %.3f. Processing %d frames\n", BARO_N, frame_count + 1);
+        fflush(stdout);
+        for (int i = 0; i < frame_count + 1; ++i)
+        {
+            if (i >= static_cast<int>(baro_z_by_frame.size()))
+                break;
+            double z = baro_z_by_frame[i];
+
+            if (std::isfinite(z))
+            {
+                //printf("[BARO FACTOR ADD] Frame %d: Adding BarometerFactor with z=%.3f m, sigma=%.3f m\n", i, z, BARO_N);
+                fflush(stdout);
+                ROS_DEBUG("Frame %d: Adding BarometerFactor with z=%.3f m", i, z);
+                BarometerFactor *baro = new BarometerFactor(z, BARO_N);
+                problem.AddResidualBlock(baro, NULL, para_Pose[i]);
+            }
+            else
+            {
+                //printf("[BARO FACTOR SKIP] Frame %d: Skipping (no valid measurement)\n", i);
+                fflush(stdout);
+            }
+        }
+    }
+    else
+    {
+        //printf("[BARO OPTIM] BARO_N disabled (value: %.3f)\n", BARO_N);
+        fflush(stdout);
+    }
+
     int f_m_cnt = 0;
     int feature_index = -1;
     for (auto &it_per_id : f_manager.feature)
@@ -1232,6 +1311,22 @@ void Estimator::optimization()
                 marginalization_info->addResidualBlockInfo(residual_block_info);
             }
         }
+
+        //Baro Marginalization - only add if barometer is enabled and measurement is valid
+        if (BARO_N > 0 && baro_z_by_frame.size() > 0 && std::isfinite(baro_z_by_frame[0]))
+        {
+            //printf("[BARO MARGIN] Marginalizing frame 0 with baro z=%.3f m, sigma=%.3f m\n", baro_z_by_frame[0], BARO_N);
+            fflush(stdout);
+            BarometerFactor* baro = new BarometerFactor(baro_z_by_frame[0], BARO_N);
+            ResidualBlockInfo *residual_block_info = new ResidualBlockInfo(baro, NULL, std::vector<double*>{para_Pose[0]}, std::vector<int>{0});
+            marginalization_info->addResidualBlockInfo(residual_block_info);
+        }
+        else if (BARO_N > 0)
+        {
+            //printf("[BARO MARGIN SKIP] Frame 0: No valid baro measurement to marginalize (size: %lu)\n", baro_z_by_frame.size());
+            fflush(stdout);
+        }
+
 
         {
             int feature_index = -1;

@@ -8,7 +8,8 @@ num_of_cam: 2
 imu_topic: "/imu0"
 image0_topic: "/cam0/image_raw"
 image1_topic: "/cam1/image_raw"
-output_path: "~/output/"
+output_path: "/home/myles/baro_test_output/"
+baro_topic: "/baro"
 
 cam0_calib: "cam0_mei.yaml"
 cam1_calib: "cam1_mei.yaml"
@@ -65,6 +66,9 @@ gyr_n: 0.01         # gyroscope measurement noise standard deviation.
 acc_w: 0.001        # accelerometer bias random work noise standard deviation.  
 gyr_w: 0.0001       # gyroscope bias random work noise standard deviation.     
 g_norm: 9.81007     # gravity magnitude
+
+#barometer parameters
+baro_n: 0.001         # barometer measurement noise standard deviation, in meters
 
 #unsynchronization parameters
 estimate_td: 0                      # online estimate time offset between camera and imu

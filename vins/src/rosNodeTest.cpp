@@ -21,6 +21,9 @@
 #include "estimator/parameters.h"
 #include "utility/visualization.h"
 
+// Importing Baro Message
+#include "baro_msgs/msg/baro_data.hpp"
+
 Estimator estimator;
 
 queue<sensor_msgs::msg::Imu::ConstPtr> imu_buf;
@@ -28,6 +31,9 @@ queue<sensor_msgs::msg::PointCloud::ConstPtr> feature_buf;
 queue<sensor_msgs::msg::Image::ConstPtr> img0_buf;
 queue<sensor_msgs::msg::Image::ConstPtr> img1_buf;
 std::mutex m_buf;
+
+// Baro Addition
+queue<baro_msgs::msg::BaroData::ConstPtr> baro_buf;
 
 // header: 1403715278
 void img0_callback(const sensor_msgs::msg::Image::SharedPtr img_msg)
@@ -196,6 +202,14 @@ void feature_callback(const sensor_msgs::msg::PointCloud::SharedPtr feature_msg)
     return;
 }
 
+void baro_callback(const baro_msgs::msg::BaroData::SharedPtr baro_msg)
+{
+    double t = baro_msg->header.stamp.sec + baro_msg->header.stamp.nanosec * (1e-9);
+    double z = baro_msg->altitude; // assume altitude in meters
+    estimator.inputBaro(t, z);
+    return;
+}
+
 void restart_callback(const std_msgs::msg::Bool::SharedPtr restart_msg)
 {
     if (restart_msg->data == true)
@@ -280,6 +294,11 @@ int main(int argc, char **argv)
         sub_img1 = n->create_subscription<sensor_msgs::msg::Image>(IMAGE1_TOPIC, rclcpp::QoS(rclcpp::KeepLast(100)), img1_callback);
     }
     
+    // Baro subscription to BARO_TOPIC
+
+    auto sub_baro = n->create_subscription<baro_msgs::msg::BaroData>(BARO_TOPIC, rclcpp::QoS(rclcpp::KeepLast(200)), baro_callback);
+
+
     auto sub_restart = n->create_subscription<std_msgs::msg::Bool>("/vins_restart", rclcpp::QoS(rclcpp::KeepLast(100)), restart_callback);
     auto sub_imu_switch = n->create_subscription<std_msgs::msg::Bool>("/vins_imu_switch", rclcpp::QoS(rclcpp::KeepLast(100)), imu_switch_callback);
     auto sub_cam_switch = n->create_subscription<std_msgs::msg::Bool>("/vins_cam_switch", rclcpp::QoS(rclcpp::KeepLast(100)), cam_switch_callback);

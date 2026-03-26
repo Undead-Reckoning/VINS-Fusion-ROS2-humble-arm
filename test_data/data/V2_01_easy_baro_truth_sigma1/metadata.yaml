@@ -1,0 +1,62 @@
+rosbag2_bagfile_information:
+  version: 5
+  storage_identifier: sqlite3
+  duration:
+    nanoseconds: 113974481165
+  starting_time:
+    nanoseconds_since_epoch: 1413393211937170803
+  message_count: 43314
+  topics_with_message_count:
+    - topic_metadata:
+        name: /baro
+        type: baro_msgs/msg/BaroData
+        serialization_format: cdr
+        offered_qos_profiles: ""
+      message_count: 2279
+    - topic_metadata:
+        name: /fcu/imu
+        type: sensor_msgs/msg/Imu
+        serialization_format: cdr
+        offered_qos_profiles: ""
+      message_count: 1140
+    - topic_metadata:
+        name: /cam0/image_raw
+        type: sensor_msgs/msg/Image
+        serialization_format: cdr
+        offered_qos_profiles: ""
+      message_count: 2280
+    - topic_metadata:
+        name: vicon/firefly_sbx/firefly_sbx
+        type: geometry_msgs/msg/TransformStamped
+        serialization_format: cdr
+        offered_qos_profiles: ""
+      message_count: 11395
+    - topic_metadata:
+        name: /cam1/image_raw
+        type: sensor_msgs/msg/Image
+        serialization_format: cdr
+        offered_qos_profiles: ""
+      message_count: 2280
+    - topic_metadata:
+        name: /fcu/motor_speed
+        type: asctec_hl_comm/msg/MotorSpeed
+        serialization_format: cdr
+        offered_qos_profiles: ""
+      message_count: 1140
+    - topic_metadata:
+        name: /imu0
+        type: sensor_msgs/msg/Imu
+        serialization_format: cdr
+        offered_qos_profiles: ""
+      message_count: 22800
+  compression_format: ""
+  compression_mode: ""
+  relative_file_paths:
+    - V2_01_easy_baro_truth_sigma1_0.db3
+  files:
+    - path: V2_01_easy_baro_truth_sigma1_0.db3
+      starting_time:
+        nanoseconds_since_epoch: 1413393211937170803
+      duration:
+        nanoseconds: 113974481165
+      message_count: 43314
