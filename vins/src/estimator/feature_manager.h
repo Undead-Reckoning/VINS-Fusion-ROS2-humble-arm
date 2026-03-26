@@ -176,6 +176,8 @@ class FeatureManager
     {
         laser_projector = lp;
     }
+    
+    std::shared_ptr<LaserDepthProjector> laser_projector = nullptr;
 
     /*
       END MODIFIED
@@ -185,19 +187,6 @@ class FeatureManager
     double compensatedParallax2(const FeaturePerId &it_per_id, int frame_count);
     const Matrix3d *Rs;
     Matrix3d ric[2];
-
-    /*
-      MODIFIED    
-      Undead Reckoning
-      Date: 01/21/26
-      By: Quinn Levinson
-    */
-
-    std::shared_ptr<LaserDepthProjector> laser_projector = nullptr;
-
-    /*
-      END MODIFIED
-    */
 };
 
 #endif

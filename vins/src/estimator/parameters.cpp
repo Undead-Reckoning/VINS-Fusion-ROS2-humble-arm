@@ -123,6 +123,9 @@ void readParameters(std::string config_file)
     VINS_RESULT_PATH = OUTPUT_FOLDER + "/vio.csv";
     std::cout << "result path " << VINS_RESULT_PATH << std::endl;
     std::ofstream fout(VINS_RESULT_PATH, std::ios::out);
+    // write csv header columns (time, position, orientation, velocity, acc bias, gyro bias)
+    fout << "time,px,py,pz,qw,qx,qy,qz,vx,vy,vz,"
+         << "ba_x,ba_y,ba_z,bg_x,bg_y,bg_z" << std::endl;
     fout.close();
 
     ESTIMATE_EXTRINSIC = fsSettings["estimate_extrinsic"];

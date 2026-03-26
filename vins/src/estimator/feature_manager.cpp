@@ -405,6 +405,7 @@ void FeatureManager::triangulate(int frameCnt, Vector3d Ps[], Matrix3d Rs[], Vec
             localPoint = leftPose.leftCols<3>() * point3d + leftPose.rightCols<1>();
             double depth = localPoint.z();
             if (depth > 0)
+            {
                 it_per_id.estimated_depth = depth;
 
                 /*
@@ -422,7 +423,7 @@ void FeatureManager::triangulate(int frameCnt, Vector3d Ps[], Matrix3d Rs[], Vec
                     double s_l = f0.depth_sigma;
 
                     double z_t = it_per_id.estimated_depth;
-                    double s_t = 0.02 * z_t;   // approx triangulation uncertainty
+                    double s_t = 0.01 * z_t;   // approx triangulation uncertainty
 
 
                     if (z_t > 0)
@@ -434,6 +435,9 @@ void FeatureManager::triangulate(int frameCnt, Vector3d Ps[], Matrix3d Rs[], Vec
 
                         it_per_id.estimated_depth = z_fused;
                         it_per_id.solve_flag = 1;
+
+                        printf("Triangulated Depth: %f\n", z_t);
+                        printf("LRF Depth: %f\n", z_l);
                     }
                     else
                     {
@@ -441,10 +445,9 @@ void FeatureManager::triangulate(int frameCnt, Vector3d Ps[], Matrix3d Rs[], Vec
                         it_per_id.solve_flag = 1;
                     }
                 }
+            }
             else
                 it_per_id.estimated_depth = INIT_DEPTH;
-
-            printf("Triangulated/LRF Depth: %f\n", it_per_id.estimated_depth);
 
             /*
                 END MODIFIED

@@ -59,7 +59,7 @@ void LaserDepthProjector::updateRange(const sensor_msgs::msg::Range::SharedPtr m
 
     ready = true;
 
-    printf("Filtered Depth: %f\n", p_c.z());
+    //printf("Filtered Depth: %f\n", p_c.z());
 }
 
 bool LaserDepthProjector::getDepth(double u_norm, double v_norm, double &depth_out, double &sigma_out)
@@ -67,7 +67,7 @@ bool LaserDepthProjector::getDepth(double u_norm, double v_norm, double &depth_o
     if (!ready) return false;
 
     Eigen::Vector3d ray(u_norm, v_norm, 1.0);
-    ray.normalize();
+    //ray.normalize();
 
     double denom = plane_normal.dot(ray);
     if (fabs(denom) < 1e-6)
