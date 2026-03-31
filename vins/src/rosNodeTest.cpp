@@ -255,7 +255,7 @@ int main(int argc, char **argv)
     // ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info);
 
     auto sub_lrf = n->create_subscription<sensor_msgs::msg::Range>(
-        "/lrf",
+        "/fmu/out/distance_sensor",
         rclcpp::QoS(rclcpp::KeepLast(200)),
         std::bind(&LaserDepthProjector::updateRange,
               laser_projector,
