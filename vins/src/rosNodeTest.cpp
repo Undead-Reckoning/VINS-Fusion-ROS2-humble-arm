@@ -28,7 +28,6 @@
 //#include <sensor_msgs/msg/magnetic_field.hpp>
 #include "px4_msgs/msg/vehicle_magnetometer.hpp" 
 
-
 Estimator estimator;
 
 queue<sensor_msgs::msg::Imu::ConstPtr> imu_buf;
