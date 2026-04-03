@@ -92,7 +92,7 @@ class Estimator
     void getPoseInWorldFrame(int index, Eigen::Matrix4d &T);
     // Factor Addition
     void inputBaro(double t, double z);
-    void inputMag(double t, const Vector3d &magneticField);
+    void inputMag(double t, const Vector3d &VehicleMagnetometer);
     void predictPtsInNextFrame();
     void outliersRejection(set<int> &removeIndex);
     double reprojectionError(Matrix3d &Ri, Vector3d &Pi, Matrix3d &rici, Vector3d &tici,

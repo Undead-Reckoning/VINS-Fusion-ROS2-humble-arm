@@ -18,7 +18,7 @@ double GYR_N, GYR_W;
 double BARO_N;
 
 double MAG_N;
-Eigen::Vector3d MAG_WORLD_FIELD;
+//Eigen::Vector3d MAG_WORLD_FIELD;
 
 std::vector<Eigen::Matrix3d> RIC;
 std::vector<Eigen::Vector3d> TIC;
@@ -141,7 +141,7 @@ void readParameters(std::string config_file)
     if(MAG_TOPIC.empty())
     {
         printf("MAG_TOPIC is empty, using default\n");
-        MAG_TOPIC = "/mag";
+        //MAG_TOPIC = "/mag";
     }
     printf("Final MAG_TOPIC: '%s'\n", MAG_TOPIC.c_str());
 
@@ -155,29 +155,6 @@ void readParameters(std::string config_file)
     //Magnetometer read in
     MAG_N = fsSettings["mag_N"];
     printf("MAG_N: %f\n", MAG_N);
-    
-    // Read world magnetic field from config (default: [0.2, 0.9, -0.3])
-    if(fsSettings["mag_world_field"].isSeq())
-    {
-        cv::FileNode mag_node = fsSettings["mag_world_field"];
-        if(mag_node.size() == 3)
-        {
-            MAG_WORLD_FIELD[0] = (double)mag_node[0];
-            MAG_WORLD_FIELD[1] = (double)mag_node[1];
-            MAG_WORLD_FIELD[2] = (double)mag_node[2];
-            printf("MAG_WORLD_FIELD from config: [%.4f, %.4f, %.4f]\n", MAG_WORLD_FIELD[0], MAG_WORLD_FIELD[1], MAG_WORLD_FIELD[2]);
-        }
-        else
-        {
-            MAG_WORLD_FIELD << 0, 0, 0;
-            printf("Invalid mag_world_field size, using default: [0, 0, 0]\n");
-        }
-    }
-    else
-    {
-        MAG_WORLD_FIELD << 0, 0, 0;
-        printf("MAG_WORLD_FIELD not in config, using default: [0, 0, 0]\n");
-    }
 
     SOLVER_TIME = fsSettings["max_solver_time"];
     NUM_ITERATIONS = fsSettings["max_num_iterations"];

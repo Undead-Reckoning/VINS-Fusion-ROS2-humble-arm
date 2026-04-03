@@ -25,7 +25,9 @@
 #include "baro_msgs/msg/baro_data.hpp"
 #include "std_msgs/msg/float32.hpp"
 #include "sensor_msgs/msg/range.hpp"
-#include <sensor_msgs/msg/magnetic_field.hpp>
+//#include <sensor_msgs/msg/magnetic_field.hpp>
+#include "px4_msgs/msg/vehicle_magnetometer.hpp" 
+
 
 Estimator estimator;
 
@@ -37,8 +39,8 @@ std::mutex m_buf;
 
 // Sensor Additions
 queue<baro_msgs::msg::BaroData::ConstPtr> baro_buf;
-
-queue<sensor_msgs::msg::MagneticField::SharedPtr> mag_buf;
+//queue<sensor_msgs::msg::MagneticField::SharedPtr> mag_buf;
+queue<px4_msgs::msg::VehicleMagnetometer::SharedPtr> mag_buf;
 
 // header: 1403715278
 void img0_callback(const sensor_msgs::msg::Image::SharedPtr img_msg)
@@ -256,16 +258,16 @@ void cam_switch_callback(const std_msgs::msg::Bool::SharedPtr switch_msg)
     return;
 }
 
-void mag_callback(const sensor_msgs::msg::MagneticField::SharedPtr mag_msg)
+void mag_callback(const px4_msgs::msg::VehicleMagnetometer::SharedPtr mag_msg)
 //void mag_callback(const std_msgs::msg::Float32::SharedPtr mag_msg)
 {
     //double t = rclcpp::Clock().now().seconds();
-    double t = mag_msg->header.stamp.sec + mag_msg->header.stamp.nanosec * (1e-9);
-    double mx = mag_msg->magnetic_field.x;
-    double my = mag_msg->magnetic_field.y;
-    double mz = mag_msg->magnetic_field.z;
+    double t = mag_msg->timestamp * 1e-6;  // Convert microseconds to seconds
+    double mx = mag_msg->magnetometer_ga[0];
+    double my = mag_msg->magnetometer_ga[1];
+    double mz = mag_msg->magnetometer_ga[2];
     //cout << "TIME: " << t << endl;
-    //cout << "MEAS: " << mx << " " << my << " " << mz << endl;
+    cout << "MEAS: " << mx << " " << my << " " << mz << endl;
 
     Eigen::Vector3d mag(mx, my, mz);
     //mag.normalize();
@@ -359,7 +361,8 @@ int main(int argc, char **argv)
     //{
     //    sub_mag = n->create_subscription<sensor_msgs::msg::Mag>(MAG_TOPIC, rclcpp::QoS(rclcpp::KeepLast(2000)), mag_callback);
     //}
-    auto sub_mag = n->create_subscription<sensor_msgs::msg::MagneticField>(MAG_TOPIC, rclcpp::QoS(rclcpp::KeepLast(2000)), mag_callback);
+    //auto sub_mag = n->create_subscription<px4_msgs::msg::VehicleMagnetometer>(MAG_TOPIC, rclcpp::QoS(rclcpp::KeepLast(2000)), mag_callback);
+    auto sub_mag = n->create_subscription<px4_msgs::msg::VehicleMagnetometer>(MAG_TOPIC,rclcpp::SensorDataQoS(),mag_callback);
 
     std::thread sync_thread{sync_process};
     rclcpp::spin(n);
