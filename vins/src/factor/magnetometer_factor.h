@@ -49,7 +49,7 @@ class MagnetometerFactor : public ceres::SizedCostFunction<3, 7>
         
         Eigen::Vector3d m_meas = Eigen::Vector3d(x_meas, y_meas, z_meas);
         Eigen::Vector3d m_meas_norm = m_meas.normalized();
-
+        cout << "meas " << m_meas << endl;
         //file for testing
         //std::ofstream measfile("/tmp/TESTING_WF_MEAS_7_on.csv", std::ios::app);
         //measfile << x_meas << " " << y_meas << " " << z_meas << std::endl;
