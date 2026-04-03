@@ -1,0 +1,62 @@
+rosbag2_bagfile_information:
+  version: 5
+  storage_identifier: sqlite3
+  duration:
+    nanoseconds: 89999490421
+  starting_time:
+    nanoseconds_since_epoch: 1403715517881911832
+  message_count: 64530
+  topics_with_message_count:
+    - topic_metadata:
+        name: /vicon/firefly_sbx/firefly_sbx
+        type: geometry_msgs/msg/TransformStamped
+        serialization_format: cdr
+        offered_qos_profiles: ""
+      message_count: 9000
+    - topic_metadata:
+        name: /cam0/image_raw
+        type: sensor_msgs/msg/Image
+        serialization_format: cdr
+        offered_qos_profiles: ""
+      message_count: 1679
+    - topic_metadata:
+        name: /mag
+        type: sensor_msgs/msg/MagneticField
+        serialization_format: cdr
+        offered_qos_profiles: ""
+      message_count: 1799
+    - topic_metadata:
+        name: /cam1/image_raw
+        type: sensor_msgs/msg/Image
+        serialization_format: cdr
+        offered_qos_profiles: ""
+      message_count: 1680
+    - topic_metadata:
+        name: /imu0
+        type: sensor_msgs/msg/Imu
+        serialization_format: cdr
+        offered_qos_profiles: ""
+      message_count: 16790
+    - topic_metadata:
+        name: /fcu/motor_speed
+        type: asctec_hl_comm/msg/MotorSpeed
+        serialization_format: cdr
+        offered_qos_profiles: ""
+      message_count: 16791
+    - topic_metadata:
+        name: /fcu/imu
+        type: sensor_msgs/msg/Imu
+        serialization_format: cdr
+        offered_qos_profiles: ""
+      message_count: 16791
+  compression_format: ""
+  compression_mode: ""
+  relative_file_paths:
+    - V1_02_mag_0.db3
+  files:
+    - path: V1_02_mag_0.db3
+      starting_time:
+        nanoseconds_since_epoch: 1403715517881911832
+      duration:
+        nanoseconds: 89999490421
+      message_count: 64530

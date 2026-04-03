@@ -21,6 +21,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <nav_msgs/msg/path.hpp>
 #include <nav_msgs/msg/odometry.hpp>
+#include <std_msgs/msg/float32_multi_array.hpp>
 #include <geometry_msgs/msg/point_stamped.h>
 #include <visualization_msgs/msg/marker.hpp>
 #include <tf2_ros/transform_broadcaster.h>
@@ -47,6 +48,9 @@ void registerPub(rclcpp::Node::SharedPtr n);
 void pubLatestOdometry(const Eigen::Vector3d &P, const Eigen::Quaterniond &Q, const Eigen::Vector3d &V, double t);
 
 void pubTrackImage(const cv::Mat &imgTrack, const double t);
+
+// helper for publishing the R_NED matrix computed by the estimator
+void pubR_NED(const std_msgs::msg::Float32MultiArray &msg);
 
 void printStatistics(const Estimator &estimator, double t);
 

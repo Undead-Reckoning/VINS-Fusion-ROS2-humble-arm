@@ -70,6 +70,13 @@ g_norm: 9.81007     # gravity magnitude
 #barometer parameters
 baro_n: 0.001         # barometer measurement noise standard deviation, in meters
 
+#magnetometer paramters
+#mag_N: [.26, .29, .29]     #magnetometer measurement noise standard deviation, in Guass (1 G = 100 uT)
+mag_N: 0.0029
+mag_world_field: [0.0, 0.4, 0.0]  # world magnetic field vector (ENU frame) [G]
+#mag_world_field: [0, 0, 0]
+#world_frame: [0.0, 1.0, 0.0]
+
 #unsynchronization parameters
 estimate_td: 0                      # online estimate time offset between camera and imu
 td: 0.0                             # initial value of time offset. unit: s. readed image clock + td = real image clock (IMU clock)

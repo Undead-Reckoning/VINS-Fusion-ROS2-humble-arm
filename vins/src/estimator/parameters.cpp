@@ -14,8 +14,11 @@ double MIN_PARALLAX;
 double ACC_N, ACC_W;
 double GYR_N, GYR_W;
 
-//barometer std dev
+//Factor Additions
 double BARO_N;
+
+double MAG_N;
+Eigen::Vector3d MAG_WORLD_FIELD;
 
 std::vector<Eigen::Matrix3d> RIC;
 std::vector<Eigen::Vector3d> TIC;
@@ -48,9 +51,12 @@ int USE_IMU;
 int MULTIPLE_THREAD;
 map<int, Eigen::Vector3d> pts_gt;
 std::string IMAGE0_TOPIC, IMAGE1_TOPIC;
+// Factor Topics
 std::string BARO_TOPIC;
+std::string MAG_TOPIC;
 std::string FISHEYE_MASK;
 std::vector<std::string> CAM_NAMES;
+std::string R_NED_TOPIC;
 int MAX_CNT;
 int MIN_DIST;
 double F_THRESHOLD;
@@ -129,6 +135,49 @@ void readParameters(std::string config_file)
     //Barometer read in
     BARO_N = fsSettings["baro_n"];
     printf("BARO_N: %f\n", BARO_N);
+    
+    fsSettings["mag_topic"] >> MAG_TOPIC;
+    printf("MAG_TOPIC from file: '%s'\n", MAG_TOPIC.c_str());
+    if(MAG_TOPIC.empty())
+    {
+        printf("MAG_TOPIC is empty, using default\n");
+        MAG_TOPIC = "/mag";
+    }
+    printf("Final MAG_TOPIC: '%s'\n", MAG_TOPIC.c_str());
+
+    // topic for publishing R_NED (rotation from VINS world frame to NED)
+    fsSettings["r_ned_topic"] >> R_NED_TOPIC;
+    if (R_NED_TOPIC.empty())
+    {
+        ROS_WARN("r_ned_topic not set in config, using default '/r_ned'");
+        R_NED_TOPIC = "/r_ned";
+    }
+    //Magnetometer read in
+    MAG_N = fsSettings["mag_N"];
+    printf("MAG_N: %f\n", MAG_N);
+    
+    // Read world magnetic field from config (default: [0.2, 0.9, -0.3])
+    if(fsSettings["mag_world_field"].isSeq())
+    {
+        cv::FileNode mag_node = fsSettings["mag_world_field"];
+        if(mag_node.size() == 3)
+        {
+            MAG_WORLD_FIELD[0] = (double)mag_node[0];
+            MAG_WORLD_FIELD[1] = (double)mag_node[1];
+            MAG_WORLD_FIELD[2] = (double)mag_node[2];
+            printf("MAG_WORLD_FIELD from config: [%.4f, %.4f, %.4f]\n", MAG_WORLD_FIELD[0], MAG_WORLD_FIELD[1], MAG_WORLD_FIELD[2]);
+        }
+        else
+        {
+            MAG_WORLD_FIELD << 0, 0, 0;
+            printf("Invalid mag_world_field size, using default: [0, 0, 0]\n");
+        }
+    }
+    else
+    {
+        MAG_WORLD_FIELD << 0, 0, 0;
+        printf("MAG_WORLD_FIELD not in config, using default: [0, 0, 0]\n");
+    }
 
     SOLVER_TIME = fsSettings["max_solver_time"];
     NUM_ITERATIONS = fsSettings["max_num_iterations"];

@@ -19,6 +19,7 @@ find_package(tf2_ros REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(camera_models REQUIRED)
 find_package(image_transport REQUIRED)
+find_package(sensor_msgs)
 
 
 find_package(OpenCV REQUIRED)
@@ -79,19 +80,19 @@ target_include_directories(vins_lib
 )
 
 ament_target_dependencies(vins_lib
-  rclcpp rcpputils std_msgs visualization_msgs geometry_msgs nav_msgs tf2 tf2_ros cv_bridge camera_models image_transport baro_msgs rclcpp sensor_msgs pcl_conversions pcl_ros
+  rclcpp rcpputils std_msgs visualization_msgs geometry_msgs nav_msgs tf2 tf2_ros cv_bridge camera_models image_transport baro_msgs sensor_msgs pcl_conversions pcl_ros
 )
 
 add_executable(vins_node src/rosNodeTest.cpp)
-ament_target_dependencies(vins_node rclcpp rcpputils std_msgs visualization_msgs geometry_msgs nav_msgs tf2 tf2_ros cv_bridge camera_models image_transport baro_msgs rclcpp sensor_msgs pcl_conversions pcl_ros)
+ament_target_dependencies(vins_node rclcpp rcpputils std_msgs visualization_msgs geometry_msgs nav_msgs tf2 tf2_ros cv_bridge camera_models image_transport baro_msgs sensor_msgs pcl_conversions pcl_ros)
 target_link_libraries(vins_node vins_lib) 
 
 add_executable(kitti_odom_test src/KITTIOdomTest.cpp)
-ament_target_dependencies(kitti_odom_test rclcpp rcpputils std_msgs visualization_msgs geometry_msgs nav_msgs tf2 tf2_ros cv_bridge camera_models image_transport baro_msgs rclcpp sensor_msgs pcl_conversions pcl_ros)
+ament_target_dependencies(kitti_odom_test rclcpp rcpputils std_msgs visualization_msgs geometry_msgs nav_msgs tf2 tf2_ros cv_bridge camera_models image_transport baro_msgs sensor_msgs pcl_conversions pcl_ros)
 target_link_libraries(kitti_odom_test vins_lib) 
 
 add_executable(kitti_gps_test src/KITTIGPSTest.cpp)
-ament_target_dependencies(kitti_gps_test rclcpp rcpputils std_msgs visualization_msgs geometry_msgs nav_msgs tf2 tf2_ros cv_bridge camera_models image_transport baro_msgs rclcpp sensor_msgs pcl_conversions pcl_ros)
+ament_target_dependencies(kitti_gps_test rclcpp rcpputils std_msgs visualization_msgs geometry_msgs nav_msgs tf2 tf2_ros cv_bridge camera_models image_transport baro_msgs sensor_msgs pcl_conversions pcl_ros)
 target_link_libraries(kitti_gps_test vins_lib) 
 
 # added from DEBUG

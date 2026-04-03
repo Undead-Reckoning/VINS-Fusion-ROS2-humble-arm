@@ -214,6 +214,7 @@ class IntegrationBase
     std::vector<double> dt_buf;
     std::vector<Eigen::Vector3d> acc_buf;
     std::vector<Eigen::Vector3d> gyr_buf;
+    std::vector<Eigen::Vector3d> mag_by_frame;
 
 };
 /*

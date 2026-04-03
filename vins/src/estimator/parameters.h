@@ -40,8 +40,11 @@ extern int USE_GPU_CERES;
 extern double ACC_N, ACC_W;
 extern double GYR_N, GYR_W;
 
-//barometer params
+// Factor Parameters
 extern double BARO_N;
+
+extern double MAG_N;
+extern Eigen::Vector3d MAG_WORLD_FIELD;
 
 extern std::vector<Eigen::Matrix3d> RIC;
 extern std::vector<Eigen::Vector3d> TIC;
@@ -55,6 +58,7 @@ extern std::string EX_CALIB_RESULT_PATH;
 extern std::string VINS_RESULT_PATH;
 extern std::string OUTPUT_FOLDER;
 extern std::string IMU_TOPIC;
+extern std::string R_NED_TOPIC;
 extern double TD;
 extern int ESTIMATE_TD;
 extern int ROLLING_SHUTTER;
@@ -68,6 +72,7 @@ extern map<int, Eigen::Vector3d> pts_gt;
 
 extern std::string IMAGE0_TOPIC, IMAGE1_TOPIC;
 extern std::string BARO_TOPIC;
+extern std::string MAG_TOPIC;
 extern std::string FISHEYE_MASK;
 extern std::vector<std::string> CAM_NAMES;
 extern int MAX_CNT;
