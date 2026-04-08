@@ -22,7 +22,8 @@
 #include "utility/visualization.h"
 
 // Sensor Includes
-#include "baro_msgs/msg/baro_data.hpp"
+//#include "baro_msgs/msg/baro_data.hpp"
+#include <px4_msgs/msg/vehicle_air_data.hpp> // Alternative for Barometer message type.
 #include "std_msgs/msg/float32.hpp"
 #include "sensor_msgs/msg/range.hpp"
 //#include <sensor_msgs/msg/magnetic_field.hpp>
@@ -37,7 +38,9 @@ queue<sensor_msgs::msg::Image::ConstPtr> img1_buf;
 std::mutex m_buf;
 
 // Sensor Additions
-queue<baro_msgs::msg::BaroData::ConstPtr> baro_buf;
+//queue<baro_msgs::msg::BaroData::ConstPtr> baro_buf;
+queue<px4_msgs::msg::VehicleAirData::ConstPtr> baro_buf; // Alternative for Barometer message type.
+
 //queue<sensor_msgs::msg::MagneticField::SharedPtr> mag_buf;
 queue<px4_msgs::msg::VehicleMagnetometer::SharedPtr> mag_buf;
 
@@ -208,12 +211,23 @@ void feature_callback(const sensor_msgs::msg::PointCloud::SharedPtr feature_msg)
     return;
 }
 
-void baro_callback(const baro_msgs::msg::BaroData::SharedPtr baro_msg)
+void baro_callback(const px4_msgs::msg::VehicleAirData::SharedPtr baro_msg)
 {
+    /*
     double t = baro_msg->header.stamp.sec + baro_msg->header.stamp.nanosec * (1e-9);
     double z = baro_msg->altitude; // assume altitude in meters
     estimator.inputBaro(t, z);
     return;
+    */
+
+    
+    // Alternative for Barometer message type.
+    // Documentation here: https://docs.px4.io/main/en/msg_docs/VehicleAirData
+    double t = baro_msg->timestamp * 1e-6; // Convert microseconds to seconds. Timestamp since sys start.
+    double z = baro_msg->baro_alt_meter; // assume distance in meters
+    estimator.inputBaro(t, z);
+    return;
+    
 }
 
 void restart_callback(const std_msgs::msg::Bool::SharedPtr restart_msg)
@@ -347,8 +361,9 @@ int main(int argc, char **argv)
     
     // Baro subscription to BARO_TOPIC
 
-    auto sub_baro = n->create_subscription<baro_msgs::msg::BaroData>(BARO_TOPIC, rclcpp::QoS(rclcpp::KeepLast(200)), baro_callback);
-
+    //auto sub_baro = n->create_subscription<baro_msgs::msg::BaroData>(BARO_TOPIC, rclcpp::QoS(rclcpp::KeepLast(200)), baro_callback);
+    // Alternative for Barometer message type.
+    auto sub_baro = n->create_subscription<px4_msgs::msg::VehicleAirData>(BARO_TOPIC, rclcpp::QoS(rclcpp::KeepLast(200)), baro_callback);
 
     auto sub_restart = n->create_subscription<std_msgs::msg::Bool>("/vins_restart", rclcpp::QoS(rclcpp::KeepLast(100)), restart_callback);
     auto sub_imu_switch = n->create_subscription<std_msgs::msg::Bool>("/vins_imu_switch", rclcpp::QoS(rclcpp::KeepLast(100)), imu_switch_callback);
