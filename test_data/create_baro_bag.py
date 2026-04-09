@@ -196,8 +196,8 @@ def validate_bag(bag_path):
 
 if __name__ == '__main__':
     # Configuration
-    INPUT_BAG = "test_data/V1_01_easy"
-    OUTPUT_BAG = "test_data/Test_Baro_Zeros_10s"
+    INPUT_BAG = "home/k2/vins_ws/src/test/HEX/HEX_flight3"
+    OUTPUT_BAG = "home/k2/vins_ws/src/test/HEX/HEX_flight3_cleaned"
     BARO_FREQUENCY = 20.0  # Hz
     DURATION_SECONDS = 10  # None = entire bag, or set to e.g. 30.0 for 30 seconds
     SKIP_TOPICS = []  # Empty list = don't skip any topics. Example: ['/fcu/motor_speed', '/some/topic']
@@ -218,6 +218,8 @@ if __name__ == '__main__':
     print(f"Input:  {INPUT_BAG}")
     print(f"Output: {OUTPUT_BAG}")
     print(f"Baro frequency: {BARO_FREQUENCY} Hz")
+
+
     if DURATION_SECONDS is not None:
         print(f"Duration limit: {DURATION_SECONDS} seconds")
     else:

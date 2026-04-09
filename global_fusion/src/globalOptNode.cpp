@@ -179,7 +179,7 @@ int main(int argc, char **argv)
 
     auto sub_GPS = n->create_subscription<sensor_msgs::msg::NavSatFix>("/gps", rclcpp::QoS(rclcpp::KeepLast(100)), GPS_callback);
 
-    auto sub_vio = n->create_subscription<nav_msgs::msg::Odometry>("/vins_estimator/odometry", rclcpp::QoS(rclcpp::KeepLast(100)), vio_callback);
+    auto sub_vio = n->create_subscription<nav_msgs::msg::Odometry>("/odometry", rclcpp::QoS(rclcpp::KeepLast(100)), vio_callback);
 
 
 

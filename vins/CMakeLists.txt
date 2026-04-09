@@ -62,7 +62,7 @@ add_library(vins_lib
     src/initial/initial_sfm.cpp
     src/initial/initial_ex_rotation.cpp
     src/featureTracker/feature_tracker.cpp)
-target_link_libraries(vins_lib  ${OpenCV_LIBS} ${CERES_LIBRARIES})
+target_link_libraries(vins_lib  ${OpenCV_LIBS} opencv_cudaoptflow opencv_cudafeatures2d opencv_cudaimgproc ${CERES_LIBRARIES})
 target_link_libraries(vins_lib ${PCL_LIBRARIES})
 
 target_include_directories(vins_lib
