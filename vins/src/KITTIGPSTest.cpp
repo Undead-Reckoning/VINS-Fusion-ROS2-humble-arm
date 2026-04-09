@@ -36,7 +36,7 @@ int main(int argc, char** argv)
 
 	pubGPS = n->create_publisher<sensor_msgs::msg::NavSatFix>("/gps", 1000);
 
-	if(argc != 3)
+	if(argc < 3)
 	{
 		printf("please intput: rosrun vins kitti_gps_test [config file] [data folder] \n"
 			   "for example: rosrun vins kitti_gps_test "

@@ -17,6 +17,9 @@ double GYR_N, GYR_W;
 std::vector<Eigen::Matrix3d> RIC;
 std::vector<Eigen::Vector3d> TIC;
 
+std::vector<Eigen::Matrix3d> R_cl;
+std::vector<Eigen::Vector3d> t_cl;
+
 Eigen::Vector3d G{0.0, 0.0, 9.8};
 
 int USE_GPU;

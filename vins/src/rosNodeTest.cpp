@@ -20,6 +20,8 @@
 #include "estimator/estimator.h"
 #include "estimator/parameters.h"
 #include "utility/visualization.h"
+#include "std_msgs/msg/float32.hpp"
+#include "sensor_msgs/msg/range.hpp"
 
 Estimator estimator;
 
@@ -241,9 +243,37 @@ int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
 	auto n = rclcpp::Node::make_shared("vins_estimator");
+
+    /*
+        MODIFIED    
+        Undead Reckoning
+        Date: 01/21/26
+        By: Quinn Levinson
+    */
+    auto laser_projector = std::make_shared<LaserDepthProjector>();
+    laser_projector->loadLRFConfig("src/VINS-Fusion-ROS2-humble-arm/config/lrf/lrf_config.yaml");
     // ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info);
 
-    if(argc != 2)
+    auto sub_lrf = n->create_subscription<sensor_msgs::msg::Range>(
+        "/fmu/out/distance_sensor",
+        rclcpp::QoS(rclcpp::KeepLast(200)),
+        std::bind(&LaserDepthProjector::updateRange,
+              laser_projector,
+              std::placeholders::_1)
+    );
+
+    std::bind(&LaserDepthProjector::updateRange,
+          laser_projector,
+          std::placeholders::_1);
+
+    // pass pointer into estimator / feature manager
+    estimator.setLaserProjector(laser_projector);
+
+    /*
+        END MODIFIED
+    */
+
+    if(argc < 2)
     {
         printf("please intput: rosrun vins vins_node [config file] \n"
                "for example: rosrun vins vins_node "
@@ -279,7 +309,6 @@ int main(int argc, char **argv)
     {
         sub_img1 = n->create_subscription<sensor_msgs::msg::Image>(IMAGE1_TOPIC, rclcpp::QoS(rclcpp::KeepLast(100)), img1_callback);
     }
-    
     auto sub_restart = n->create_subscription<std_msgs::msg::Bool>("/vins_restart", rclcpp::QoS(rclcpp::KeepLast(100)), restart_callback);
     auto sub_imu_switch = n->create_subscription<std_msgs::msg::Bool>("/vins_imu_switch", rclcpp::QoS(rclcpp::KeepLast(100)), imu_switch_callback);
     auto sub_cam_switch = n->create_subscription<std_msgs::msg::Bool>("/vins_cam_switch", rclcpp::QoS(rclcpp::KeepLast(100)), cam_switch_callback);

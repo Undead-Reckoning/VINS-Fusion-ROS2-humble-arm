@@ -1,0 +1,72 @@
+#pragma once
+
+#include <list>
+#include <algorithm>
+#include <vector>
+#include <numeric>
+
+#include <eigen3/Eigen/Dense>
+#include <rcpputils/asserts.hpp>
+#include "parameters.h"
+#include "../utility/tic_toc.h"
+#include <mutex>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+
+
+#include <vector>
+#include "../utility/utility.h"
+#include <opencv2/opencv.hpp>
+#include <opencv2/core/eigen.hpp>
+#include "sensor_msgs/msg/range.hpp"
+#include <fstream>
+#include <map>
+#include <deque>
+
+/*
+    MODIFIED    
+    Undead Reckoning
+    Date: 01/21/26
+    By: Quinn Levinson
+*/
+
+using namespace std;
+using namespace Eigen;
+
+struct TimedRange
+{
+    double t;
+    double r;
+};
+
+class LaserDepthProjector
+{
+public:
+    Matrix3d R_cl;       // camera <- laser
+    Vector3d t_cl;
+    double sampling_rate;
+    double laser_noise_std;
+    double laser_resolution;
+    double laser_downsample;
+    double laser_min_range;
+    double laser_max_range;
+
+    bool ready = false;
+
+    Eigen::Vector3d p_c;
+    Eigen::Vector3d plane_normal = Eigen::Vector3d(0, 0, 1);
+
+    void updateRange(const sensor_msgs::msg::Range::SharedPtr msg);
+    bool getDepth(double u_norm, double v_norm, double &depth_out, double &sigma_out);
+    void loadLRFConfig(std::string path);
+
+private:
+    std::mutex buffer_mutex;
+    
+    std::deque<TimedRange> range_buffer;
+    double filter_window_sec = 1.0;   // 1 second
+};
+
+/*
+    END MODIFIED
+*/

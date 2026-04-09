@@ -8,18 +8,33 @@
  *******************************************************/
 
 #include "feature_manager.h"
+#include "LaserDepthProjector.h"
+
+static_assert(true, "HEADER INCLUDED");
 
 int FeaturePerId::endFrame()
 {
     return start_frame + feature_per_frame.size() - 1;
 }
 
-FeatureManager::FeatureManager(Matrix3d _Rs[])
-    : Rs(_Rs)
+/*
+    MODIFIED    
+    Undead Reckoning
+    Date: 01/21/26
+    By: Quinn Levinson
+*/
+
+FeatureManager::FeatureManager(Eigen::Matrix3d* _Rs,
+                               std::shared_ptr<LaserDepthProjector> lp)
+    : Rs(_Rs), laser_projector(lp)
 {
     for (int i = 0; i < NUM_OF_CAM; i++)
         ric[i].setIdentity();
 }
+
+/*
+    END MODIFIED
+*/
 
 void FeatureManager::setRic(Matrix3d _ric[])
 {
@@ -59,9 +74,29 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
     last_average_parallax = 0;
     new_feature_num = 0;
     long_track_num = 0;
+
     for (auto &id_pts : image)
     {
         FeaturePerFrame f_per_fra(id_pts.second[0].second, td);
+
+        /*
+            MODIFIED    
+            Undead Reckoning
+            Date: 01/21/26
+            By: Quinn Levinson
+        */
+
+        // Lookup depth from depth image or laser projection
+        double depth, sigma;
+        if (laser_projector && laser_projector->ready && laser_projector->getDepth(f_per_fra.point(0), f_per_fra.point(1), depth, sigma))
+        {
+            f_per_fra.setLaserDepth(depth, sigma);
+        }
+
+        /*
+            END MODIFIED
+        */
+
         assert(id_pts.second[0].first == 0);
         if(id_pts.second.size() == 2)
         {
@@ -89,6 +124,8 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
                 long_track_num++;
         }
     }
+
+    laser_projector->ready = false;
 
     //if (frame_count < 2 || last_track_num < 20)
     //if (frame_count < 2 || last_track_num < 20 || new_feature_num > 0.5 * last_track_num)
@@ -303,8 +340,6 @@ void FeatureManager::triangulate(int frameCnt, Vector3d Ps[], Matrix3d Rs[], Vec
 {
     for (auto &it_per_id : feature)
     {
-        if (it_per_id.estimated_depth > 0)
-            continue;
 
         if(STEREO && it_per_id.feature_per_frame[0].is_stereo)
         {
@@ -370,9 +405,54 @@ void FeatureManager::triangulate(int frameCnt, Vector3d Ps[], Matrix3d Rs[], Vec
             localPoint = leftPose.leftCols<3>() * point3d + leftPose.rightCols<1>();
             double depth = localPoint.z();
             if (depth > 0)
+            {
                 it_per_id.estimated_depth = depth;
+
+                /*
+                    MODIFIED    
+                    Undead Reckoning
+                    Date: 01/21/26
+                    By: Quinn Levinson
+                */
+
+                FeaturePerFrame &f0 = it_per_id.feature_per_frame.front();
+                // Weight laser depth and triangulation values
+                if (f0.has_laser_depth)
+                {
+                    double z_l = f0.laser_depth;
+                    double s_l = f0.depth_sigma;
+
+                    double z_t = it_per_id.estimated_depth;
+                    double s_t = 0.01 * z_t;   // approx triangulation uncertainty
+
+
+                    if (z_t > 0)
+                    {
+                        double w_l = 1.0 / (s_l * s_l);
+                        double w_t = 1.0 / (s_t * s_t);
+
+                        double z_fused = (z_l * w_l + z_t * w_t) / (w_l + w_t);
+
+                        it_per_id.estimated_depth = z_fused;
+                        it_per_id.solve_flag = 1;
+
+                        printf("Triangulated Depth: %f\n", z_t);
+                        printf("LRF Depth: %f\n", z_l);
+                    }
+                    else
+                    {
+                        it_per_id.estimated_depth = z_l;
+                        it_per_id.solve_flag = 1;
+                    }
+                }
+            }
             else
                 it_per_id.estimated_depth = INIT_DEPTH;
+
+            /*
+                END MODIFIED
+            */
+
             /*
             Vector3d ptsGt = pts_gt[it_per_id.feature_id];
             printf("motion  %d pts: %f %f %f gt: %f %f %f \n",it_per_id.feature_id, point3d.x(), point3d.y(), point3d.z(),
@@ -380,6 +460,7 @@ void FeatureManager::triangulate(int frameCnt, Vector3d Ps[], Matrix3d Rs[], Vec
             */
             continue;
         }
+
         it_per_id.used_num = it_per_id.feature_per_frame.size();
         if (it_per_id.used_num < 4)
             continue;
@@ -426,6 +507,9 @@ void FeatureManager::triangulate(int frameCnt, Vector3d Ps[], Matrix3d Rs[], Vec
         {
             it_per_id.estimated_depth = INIT_DEPTH;
         }
+
+        if (it_per_id.feature_per_frame.empty())
+            continue;
 
     }
 }
