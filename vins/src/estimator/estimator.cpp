@@ -247,7 +247,7 @@ void Estimator::inputIMU(double t, const Vector3d &linearAcceleration, const Vec
 
 void Estimator::inputBaro(double t, double z)
 {
-    //printf("[BARO INPUT] Time: %.6f, Altitude: %.3f m\n", t, z);
+    printf("[BARO INPUT] Time: %.6f, Altitude: %.3f m\n", t, z);
     fflush(stdout);
     mBuf.lock();
     baroBuf.push(make_pair(t, z));
@@ -258,6 +258,8 @@ void Estimator::inputBaro(double t, double z)
 
 void Estimator::inputMag(double t, const Vector3d &VehicleMagnetometer)
 {
+    printf("[MAG INPUT] Time: %.6f, Magnetometer: [%.3f, %.3f, %.3f]\n", t, VehicleMagnetometer.x(), VehicleMagnetometer.y(), VehicleMagnetometer.z());
+    fflush(stdout);
     mBuf.lock();
     magBuf.push(make_pair(t, VehicleMagnetometer));
     //cout << "size " << magBuf.size() << endl;
@@ -386,7 +388,7 @@ void Estimator::processMeasurements()
             // Baro Addition
             // Handle barometer measurements for this frame: assign altitude (meters) to baro_z_by_frame[frame_count]
             mBuf.lock();
-            //printf("[BARO PROCESS] Frame %d, prevTime: %.6f, curTime: %.6f\n", frame_count, prevTime, curTime);
+            printf("[BARO PROCESS] Frame %d, prevTime: %.6f, curTime: %.6f, Baro Time: %.6f\n", frame_count, prevTime, curTime, baroBuf.front().first);
             fflush(stdout);
             // ensure vector size
             if (baro_z_by_frame.size() < static_cast<size_t>(frame_count + 1))
@@ -396,16 +398,18 @@ void Estimator::processMeasurements()
             while (!baroBuf.empty() && baroBuf.front().first <= prevTime)
             {
                 //printf("[BARO DISCARD] Discarding old baro measurement at time %.6f\n", baroBuf.front().first);
-                fflush(stdout);
+                //fflush(stdout);
                 baroBuf.pop();
             }
 
+            printf("[BARO IF CHECK] BaroBuf Front Time <= Current Time: %s\n", (!baroBuf.empty() && baroBuf.front().first <= curTime) ? "true" : "false");
+            fflush(stdout);
             if (!baroBuf.empty() && baroBuf.front().first <= curTime)
             {
                 double z = baroBuf.front().second;
                 baroBuf.pop();
                 baro_z_by_frame[frame_count] = z;
-                //printf("[BARO ASSIGNED] Frame %d assigned altitude: %.3f m\n", frame_count, z);
+                printf("[BARO ASSIGNED] Frame %d assigned altitude: %.3f m\n", frame_count, z);
                 fflush(stdout);
             }
             else
